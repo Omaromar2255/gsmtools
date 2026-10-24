@@ -541,19 +541,88 @@
                 <TabItem Header="💻 AT Terminal">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="0,6,4,0">
-                            <Border Style="{StaticResource CardBorderStyle}">
+                            <!-- Card 1: Transport & Modem Port Selector -->
+                            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,10">
                                 <StackPanel>
-                                    <TextBlock Text="INTERACTIVE AT &amp; IPC DIRECT TERMINAL" FontSize="13" FontWeight="Bold" Foreground="{StaticResource AccentCyan}" Margin="0,0,0,6" />
+                                    <TextBlock Text="📡 قناة الاتصال وبورت المودم (MODEM PORT &amp; TRANSPORT)" FontSize="13" FontWeight="Bold" Foreground="{StaticResource AccentCyan}" Margin="0,0,0,6" />
+                                    <TextBlock Text="اختر وسيلة إرسال أوامر AT: عبر منفذ المودم الفيزيائي المباشر (Direct COM Port) أو عبر جسر الأندرويد (ADB / AT Bridge)."
+                                               FontSize="11" Foreground="{StaticResource TextSecondary}" Margin="0,0,0,10" />
+
+                                    <!-- Transport Mode Switch -->
+                                    <Grid Margin="0,0,0,10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="10" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <Border Grid.Column="0" Background="#161B28" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="6" Padding="10,8">
+                                            <RadioButton GroupName="AtTransportGroup" IsChecked="{Binding IsAdbBridgeMode}">
+                                                <StackPanel>
+                                                    <TextBlock Text="جسر أندرويد (ADB / AT Bridge)" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" />
+                                                    <TextBlock Text="عبر أدوات النظام /data/local/tmp/AT وبورت 2600" FontSize="10" Foreground="{StaticResource TextMuted}" />
+                                                </StackPanel>
+                                            </RadioButton>
+                                        </Border>
+
+                                        <Border Grid.Column="2" Background="#161B28" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="6" Padding="10,8">
+                                            <RadioButton GroupName="AtTransportGroup" IsChecked="{Binding IsDirectModemMode}">
+                                                <StackPanel>
+                                                    <TextBlock Text="بورت المودم المباشر (Direct COM Port)" FontWeight="SemiBold" Foreground="{StaticResource AccentCyan}" />
+                                                    <TextBlock Text="إرسال مباشر إلى SAMSUNG Mobile USB Modem بدون ADB" FontSize="10" Foreground="{StaticResource TextMuted}" />
+                                                </StackPanel>
+                                            </RadioButton>
+                                        </Border>
+                                    </Grid>
+
+                                    <!-- Modem Port Selector & Connect Buttons -->
+                                    <Grid Margin="0,0,0,6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="8" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="8" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <ComboBox Grid.Column="0" ItemsSource="{Binding AvailableComPorts}" SelectedItem="{Binding SelectedComPort}"
+                                                  DisplayMemberPath="DisplayName" Height="36" Background="#161B28" Foreground="{StaticResource TextPrimary}"
+                                                  BorderBrush="{StaticResource BorderSubtle}" VerticalContentAlignment="Center" FontSize="12" />
+
+                                        <Button Grid.Column="2" Command="{Binding RefreshComPortsCommand}" Style="{StaticResource ModernDarkButton}" Height="36" Padding="12,4"
+                                                ToolTip="فحص وتحديث قائمة منافذ COM المتصلة بالجهاز">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="🔄" Margin="0,0,6,0" />
+                                                <TextBlock Text="تحديث المنافذ" />
+                                            </StackPanel>
+                                        </Button>
+
+                                        <Button Grid.Column="4" Command="{Binding ConnectModemPortCommand}" Style="{StaticResource AccentActionButton}" Height="36" Padding="14,4"
+                                                ToolTip="فتح اتصال تسلسلي مباشر مع بورت المودم المحدد">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="⚡" Margin="0,0,6,0" />
+                                                <TextBlock Text="{Binding ModemConnectButtonText}" />
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Card 2: Single Command Execution & Presets -->
+                            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,10">
+                                <StackPanel>
+                                    <TextBlock Text="💻 إرسال أمر فردي (SINGLE AT COMMAND EXECUTION)" FontSize="13" FontWeight="Bold" Foreground="{StaticResource AccentCyan}" Margin="0,0,0,6" />
                                     <TextBlock Text="أرسل أي أمر AT نصي أو حزمة HEX مباشرة للمودم واعرض الرد الحي في الطرفية."
                                                FontSize="11" Foreground="{StaticResource TextSecondary}" Margin="0,0,0,10" />
 
                                     <!-- Quick Command Buttons -->
                                     <TextBlock Text="أوامر سريعة جاهزة (Quick Presets):" Foreground="{StaticResource TextSecondary}" FontSize="11" Margin="0,0,0,6" />
-                                    <WrapPanel Margin="0,0,0,12">
+                                    <WrapPanel Margin="0,0,0,10">
                                         <Button Content="AT" Command="{Binding QuickAtCommand}" CommandParameter="AT" Style="{StaticResource ModernDarkButton}" Padding="8,4" Margin="0,0,6,6" FontSize="11" />
                                         <Button Content="AT+DEVCONINFO" Command="{Binding QuickAtCommand}" CommandParameter="AT+DEVCONINFO" Style="{StaticResource ModernDarkButton}" Padding="8,4" Margin="0,0,6,6" FontSize="11" />
                                         <Button Content="AT+CPIN?" Command="{Binding QuickAtCommand}" CommandParameter="AT+CPIN?" Style="{StaticResource ModernDarkButton}" Padding="8,4" Margin="0,0,6,6" FontSize="11" />
                                         <Button Content="AT+CLCK=&quot;PN&quot;,2" Command="{Binding QuickAtCommand}" CommandParameter="AT+CLCK=&quot;PN&quot;,2" Style="{StaticResource ModernDarkButton}" Padding="8,4" Margin="0,0,6,6" FontSize="11" />
+                                        <Button Content="AT+PRECONFG=1,0" Command="{Binding QuickAtCommand}" CommandParameter="AT+PRECONFG=1,0" Style="{StaticResource ModernDarkButton}" Padding="8,4" Margin="0,0,6,6" FontSize="11" />
                                         <Button Content="AT+VERSNAME=1,9,0" Command="{Binding QuickAtCommand}" CommandParameter="AT+VERSNAME=1,9,0" Style="{StaticResource ModernDarkButton}" Padding="8,4" Margin="0,0,6,6" FontSize="11" />
                                         <Button Content="AT+CIMI" Command="{Binding QuickAtCommand}" CommandParameter="AT+CIMI" Style="{StaticResource ModernDarkButton}" Padding="8,4" Margin="0,0,6,6" FontSize="11" />
                                         <Button Content="AT+BATTEST=1,0" Command="{Binding QuickAtCommand}" CommandParameter="AT+BATTEST=1,0" Style="{StaticResource ModernDarkButton}" Padding="8,4" Margin="0,0,6,6" FontSize="11" />
@@ -562,18 +631,55 @@
 
                                     <!-- Command Input Box -->
                                     <TextBlock Text="أمر AT أو بايتات Hex (Command Input):" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="0,0,0,4" />
-                                    <Grid Margin="0,0,0,10">
+                                    <Grid Margin="0,0,0,4">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="8" />
-                                            <ColumnDefinition Width="90" />
+                                            <ColumnDefinition Width="100" />
                                         </Grid.ColumnDefinitions>
 
                                         <TextBox Grid.Column="0" Text="{Binding TerminalInput, UpdateSourceTrigger=PropertyChanged}" Height="36"
                                                  Background="#161B28" Foreground="{StaticResource AccentCyan}" BorderBrush="{StaticResource BorderSubtle}"
                                                  Padding="8,4" VerticalContentAlignment="Center" FontFamily="Consolas" FontSize="12" />
 
-                                        <Button Grid.Column="2" Command="{Binding SendTerminalCommand}" Style="{StaticResource AccentActionButton}" Height="36" Content="إرسال" />
+                                        <Button Grid.Column="2" Command="{Binding SendTerminalCommand}" Style="{StaticResource AccentActionButton}" Height="36" Content="إرسال الأمر" />
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Card 3: Sequential Multi-Line Batch AT Execution -->
+                            <Border Style="{StaticResource CardBorderStyle}">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,6">
+                                        <TextBlock Text="🚀 تنفيذ حزمة أوامر مجمعة بالتتابع (SEQUENTIAL BATCH AT EXECUTION)" FontSize="13" FontWeight="Bold" Foreground="{StaticResource AccentCyan}" VerticalAlignment="Center" />
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                            <Button Content="نموذج فحص عام (5 أوامر)" Command="{Binding LoadBatchPreset1Command}" Style="{StaticResource ModernDarkButton}" Padding="8,2" FontSize="10" Margin="0,0,4,0" />
+                                            <Button Content="نموذج تشخيص شبكة وأقفال (5 أوامر)" Command="{Binding LoadBatchPreset2Command}" Style="{StaticResource ModernDarkButton}" Padding="8,2" FontSize="10" />
+                                        </StackPanel>
+                                    </Grid>
+                                    <TextBlock Text="أدخل عدة أوامر (كل أمر بسطر مستقل). يتم إرسال الأوامر بالترتيب واحداً تلو الآخر تلقائياً مع إظهار الأمر المنفذ والرد وحالة النجاح [SUCCESS/FAILED] في السجل الحي."
+                                               FontSize="11" Foreground="{StaticResource TextSecondary}" Margin="0,0,0,8" />
+
+                                    <TextBox Text="{Binding BatchAtCommandsText, UpdateSourceTrigger=PropertyChanged}"
+                                             Height="120" AcceptsReturn="True" TextWrapping="NoWrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                                             Background="#161B28" Foreground="{StaticResource AccentCyan}" BorderBrush="{StaticResource BorderSubtle}"
+                                             Padding="10,8" FontFamily="Consolas" FontSize="12" Margin="0,0,0,10" />
+
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBlock Grid.Column="0" Text="ملاحظة: يمكنك استخدام أسطر تبدأ بـ # أو // للتعليقات، وسيتم تجاوزها تلقائياً."
+                                                   FontSize="11" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" />
+
+                                        <Button Grid.Column="1" Command="{Binding ExecuteBatchAtCommand}" Style="{StaticResource AccentActionButton}" Height="38" Padding="16,4">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="🚀" Margin="0,0,8,0" />
+                                                <TextBlock Text="تشغيل الأوامر بالتتابع (Run Batch)" FontWeight="Bold" />
+                                            </StackPanel>
+                                        </Button>
                                     </Grid>
                                 </StackPanel>
                             </Border>

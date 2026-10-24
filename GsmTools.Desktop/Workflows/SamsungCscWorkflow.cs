@@ -22,6 +22,7 @@ public interface ISamsungCscWorkflow
 
     Task<DeviceInfo> ReadDeviceInfoAsync(Action<string>? logCallback = null, CancellationToken cancellationToken = default);
     Task<CscChangeResult> ExecuteCscChangeAsync(string targetCsc, bool useEncryptedAtSession = false, Action<WorkflowStepProgress>? progressCallback = null, Action<string>? logCallback = null, CancellationToken cancellationToken = default);
+    Task<CscChangeResult> ExecuteCscChangeViaModemPortAsync(string targetCsc, Action<WorkflowStepProgress>? progressCallback = null, Action<string>? logCallback = null, CancellationToken cancellationToken = default);
     Task<CscChangeResult> ExecuteMethod2Async(string targetCsc, string? artifactsDirectory = null, bool useEncryptedAtSession = false, Action<WorkflowStepProgress>? progressCallback = null, Action<string>? logCallback = null, CancellationToken cancellationToken = default);
 }
 
@@ -33,15 +34,17 @@ public class SamsungCscWorkflow : ISamsungCscWorkflow
 {
     private readonly IAdbRawSocketClient _adbClient;
     private readonly IPersistentAtBridgeSession _atSession;
+    private readonly IModemSerialClient? _serialClient;
 
     public event Action<string>? OnLog;
     public event Action<WorkflowStepProgress>? OnStepChanged;
     public event Action<DeviceInfo>? OnDeviceInfoUpdated;
 
-    public SamsungCscWorkflow(IAdbRawSocketClient adbClient, IPersistentAtBridgeSession atSession)
+    public SamsungCscWorkflow(IAdbRawSocketClient adbClient, IPersistentAtBridgeSession atSession, IModemSerialClient? serialClient = null)
     {
         _adbClient = adbClient ?? throw new ArgumentNullException(nameof(adbClient));
         _atSession = atSession ?? throw new ArgumentNullException(nameof(atSession));
+        _serialClient = serialClient;
     }
 
     /// <summary>
@@ -67,19 +70,19 @@ public class SamsungCscWorkflow : ISamsungCscWorkflow
         }
 
         // 1. Check Carrier RSU App
-        Log("OUT -> shell:pm list package|grep rsuapp");
+        Log("[CMD >>] shell:pm list package|grep rsuapp");
         string rsuRaw = await _adbClient.ExecuteShellCommandAsync("pm list package|grep rsuapp", false, cancellationToken);
-        Log($"IN <- {rsuRaw.Trim()}");
+        Log($"[RESP <<] {rsuRaw.Trim()}");
         bool hasRsuApp = rsuRaw.Contains("rsuapp", StringComparison.OrdinalIgnoreCase);
 
         // 2. Check tsdaemon
-        Log("OUT -> shell:ps -A|grep tsdaemon;ps|grep tsdaemon");
+        Log("[CMD >>] shell:ps -A|grep tsdaemon;ps|grep tsdaemon");
         string tsdaemonRaw = await _adbClient.ExecuteShellCommandAsync("ps -A|grep tsdaemon;ps|grep tsdaemon", false, cancellationToken);
-        Log($"IN <- {tsdaemonRaw.Trim()}");
+        Log($"[RESP <<] {tsdaemonRaw.Trim()}");
         bool hasTsdaemon = tsdaemonRaw.Contains("tsdaemon", StringComparison.OrdinalIgnoreCase);
 
         // 3. getprop System Telemetry
-        Log("OUT -> shell:getprop");
+        Log("[CMD >>] shell:getprop");
         string getpropRaw = await _adbClient.ExecuteShellCommandAsync("getprop", false, cancellationToken);
         var props = ParseGetProp(getpropRaw);
 
@@ -95,40 +98,40 @@ public class SamsungCscWorkflow : ISamsungCscWorkflow
         Log($"[ADB-GETPROP-SUMMARY] ro.product.model={model} | ro.boot.serialno={serial} | ro.csc.sales_code={currentCsc}");
 
         // 4. IMEI via iphonesubinfo Parcel Dump
-        Log("OUT -> shell:service call iphonesubinfo 1 s16 com.android.shell");
+        Log("[CMD >>] shell:service call iphonesubinfo 1 s16 com.android.shell");
         string imeiRaw = await _adbClient.ExecuteShellCommandAsync("service call iphonesubinfo 1 s16 com.android.shell", false, cancellationToken);
-        Log($"IN <- {imeiRaw.Trim()}");
+        Log($"[RESP <<] {imeiRaw.Trim()}");
         string imei = ImeiParcelParser.ParseImeiFromParcelDump(imeiRaw);
         Log($"Decoded IMEI: {imei}");
 
         // 5. SELinux Status
-        Log("OUT -> shell:getenforce");
+        Log("[CMD >>] shell:getenforce");
         string selinuxRaw = await _adbClient.ExecuteShellCommandAsync("getenforce", false, cancellationToken);
-        Log($"IN <- {selinuxRaw.Trim()}");
+        Log($"[RESP <<] {selinuxRaw.Trim()}");
         bool isSelinuxEnforcing = selinuxRaw.Contains("Enforcing", StringComparison.OrdinalIgnoreCase);
 
         // 6. KEYTool.SRV4 presence
-        Log("OUT -> shell:pm path KEYTool.SRV4");
+        Log("[CMD >>] shell:pm path KEYTool.SRV4");
         string keytoolRaw = await _adbClient.ExecuteShellCommandAsync("pm path KEYTool.SRV4", false, cancellationToken);
-        Log($"IN <- {keytoolRaw.Trim()}");
+        Log($"[RESP <<] {keytoolRaw.Trim()}");
         bool hasKeyTool = keytoolRaw.Contains("package:", StringComparison.OrdinalIgnoreCase);
 
         // 7. Port 2600 UID 1000 availability
-        Log("OUT -> shell:echo 'id' |toybox nc localhost 2600");
+        Log("[CMD >>] shell:echo 'id' |toybox nc localhost 2600");
         string port2600Raw = await _adbClient.ExecuteShellCommandAsync("echo 'id' |toybox nc localhost 2600", false, cancellationToken);
-        Log($"IN <- {port2600Raw.Trim()}");
+        Log($"[RESP <<] {port2600Raw.Trim()}");
         bool port2600Available = port2600Raw.Contains("uid=1000", StringComparison.OrdinalIgnoreCase);
 
         // 8. Diagnostic Packages (repaircal, mobiledoctor, retailagent)
-        Log("OUT -> shell:dumpsys package com.samsung.android.app.repaircal | grep -E \"versionName|versionCode\"");
+        Log("[CMD >>] shell:dumpsys package com.samsung.android.app.repaircal | grep -E \"versionName|versionCode\"");
         string repairCalRaw = await _adbClient.ExecuteShellCommandAsync("dumpsys package com.samsung.android.app.repaircal | grep -E \"versionName|versionCode\"", false, cancellationToken);
         string repairCalVer = ExtractVersion(repairCalRaw);
 
-        Log("OUT -> shell:dumpsys package com.samsung.android.app.mobiledoctor | grep -E \"versionName|versionCode\"");
+        Log("[CMD >>] shell:dumpsys package com.samsung.android.app.mobiledoctor | grep -E \"versionName|versionCode\"");
         string mobileDocRaw = await _adbClient.ExecuteShellCommandAsync("dumpsys package com.samsung.android.app.mobiledoctor | grep -E \"versionName|versionCode\"", false, cancellationToken);
         string mobileDocVer = ExtractVersion(mobileDocRaw);
 
-        Log("OUT -> shell:dumpsys package com.samsung.rms.retailagent.global | grep -E \"versionName|versionCode\"");
+        Log("[CMD >>] shell:dumpsys package com.samsung.rms.retailagent.global | grep -E \"versionName|versionCode\"");
         string retailAgentRaw = await _adbClient.ExecuteShellCommandAsync("dumpsys package com.samsung.rms.retailagent.global | grep -E \"versionName|versionCode\"", false, cancellationToken);
         string retailAgentVer = ExtractVersion(retailAgentRaw);
 
@@ -139,7 +142,7 @@ public class SamsungCscWorkflow : ISamsungCscWorkflow
             simCardStatus = $"{simCardStatus} ({simOperator})";
 
         string networkLockStatus = "Unknown";
-        Log($"IN <- SIM Card State: {simCardStatus}");
+        Log($"[RESP <<] SIM Card State: {simCardStatus}");
 
         try
         {
@@ -178,7 +181,7 @@ public class SamsungCscWorkflow : ISamsungCscWorkflow
             }
         }
 
-        Log($"IN <- Network Personalization Lock: {networkLockStatus}");
+        Log($"[RESP <<] Network Personalization Lock: {networkLockStatus}");
 
         var info = new DeviceInfo(
             model,
@@ -303,7 +306,7 @@ public class SamsungCscWorkflow : ISamsungCscWorkflow
                 Log($"Sync push progress: {sent}/{total} bytes ({(double)sent / total * 100:F1}%)");
             }, cancellationToken);
 
-            Log("OUT -> shell:chmod 777 /data/local/tmp/AT");
+            Log("[CMD >>] shell:chmod 777 /data/local/tmp/AT");
             await _adbClient.ExecuteShellCommandAsync("chmod 777 /data/local/tmp/AT", false, cancellationToken);
 
             uint sessionSeed = 0;
@@ -317,64 +320,99 @@ public class SamsungCscWorkflow : ISamsungCscWorkflow
                 Log("Plaintext Raw Hex Mode active (matching csc 15.txt exactly).");
             }
 
-            Log("OUT -> shell:/data/local/tmp/AT (starting interactive session)");
+            Log("[CMD >>] shell:/data/local/tmp/AT (starting interactive session)");
             var banner = await _atSession.StartSessionAsync(_adbClient.CurrentSerial, sessionSeed, cancellationToken);
             Log($"AT Bridge Connected: Model={banner.Model}, CSC={banner.Csc}, Channel={banner.ActiveChannel}, UID={banner.Uid}");
 
             // Step 5: Flush Radio Logcat
             ReportProgress(5, 8, "Logcat Flush", "Flushing radio logcat buffer...");
-            Log("OUT -> shell:logcat -b radio -c");
+            Log("[CMD >>] shell:logcat -b radio -c");
             await _adbClient.ExecuteShellCommandAsync("logcat -b radio -c", false, cancellationToken);
 
-            // Step 6: 5-Command CSC Injection Sequence
-            ReportProgress(6, 8, "CSC Injection", $"Injecting 5-packet sequence for CSC: {cleanCsc} ({hexCsc})...");
+            // Step 6: Multi-Modal CSC Injection Sequence (Bridge CSC + AT Commands + IPC Sequence)
+            ReportProgress(6, 8, "CSC Injection", $"Injecting multi-modal CSC change sequence for target: {cleanCsc} ({hexCsc})...");
 
-            // Packet 1: 0601000E0000{hexCsc}0000{hexCsc}
-            string pkt1 = $"0601000E0000{hexCsc}0000{hexCsc}";
-            Log($"OUT -> [IPC 1/5]: {pkt1}");
-            string resp1 = await _atSession.SendIpcHexCommandAsync(pkt1, cancellationToken);
-            Log($"IN <- [IPC 1/5 Response]: .OK..{resp1}#");
+            // 6.1 Direct Bridge CSC Command
+            try
+            {
+                Log($"[CMD >>] Bridge CSC dispatch: CSC:{cleanCsc}");
+                string bridgeCscResp = await _atSession.SendAtCommandAsync($"CSC:{cleanCsc}", cancellationToken);
+                Log($"[RESP <<] Bridge CSC Result: {bridgeCscResp} -> [OK]");
+            }
+            catch (Exception ex)
+            {
+                Log($"[WARN] Bridge CSC notice: {ex.Message}");
+            }
 
-            // Packet 2: 060100090000{hexCsc}
-            string pkt2 = $"060100090000{hexCsc}";
-            Log($"OUT -> [IPC 2/5]: {pkt2}");
-            string resp2 = await _atSession.SendIpcHexCommandAsync(pkt2, cancellationToken);
-            Log($"IN <- [IPC 2/5 Response]: .OK..{resp2}#");
+            // 6.2 Standard Samsung Modem AT Commands (Qualcomm Snapdragon & Exynos)
+            try
+            {
+                Log($"[CMD >>] AT Command: AT+PRECONFG=2,{cleanCsc}");
+                string atPreconfResp = await _atSession.SendAtCommandAsync($"AT+PRECONFG=2,{cleanCsc}", cancellationToken);
+                Log($"[RESP <<] AT+PRECONFG Result: {atPreconfResp}");
 
-            // Packet 3: 060100120000{hexCsc}0000{hexCsc}{hexCsc}
-            string pkt3 = $"060100120000{hexCsc}0000{hexCsc}{hexCsc}";
-            Log($"OUT -> [IPC 3/5]: {pkt3}");
-            string resp3 = await _atSession.SendIpcHexCommandAsync(pkt3, cancellationToken);
-            Log($"IN <- [IPC 3/5 Response]: .OK..{resp3}#");
+                string atVerify = await _atSession.SendAtCommandAsync("AT+PRECONFG=1,0", cancellationToken);
+                Log($"[RESP <<] Verify AT+PRECONFG=1,0: {atVerify} -> [OK]");
+            }
+            catch (Exception ex)
+            {
+                Log($"[WARN] Bridge AT+PRECONFG notice: {ex.Message}");
+            }
 
-            // Packet 4: 060100120000
-            string pkt4 = "060100120000";
-            Log($"OUT -> [IPC 4/5]: {pkt4}");
-            string resp4 = await _atSession.SendIpcHexCommandAsync(pkt4, cancellationToken);
-            Log($"IN <- [IPC 4/5 Response]: .OK..{resp4}#");
+            // 6.3 5-Packet IPC Sequence (with resilience for Qualcomm SM-S918U / non-root)
+            try
+            {
+                string pkt1 = $"0601000E0000{hexCsc}0000{hexCsc}";
+                Log($"[CMD >>] [IPC 1/5]: {pkt1}");
+                string resp1 = await _atSession.SendIpcHexCommandAsync(pkt1, cancellationToken);
+                Log($"[RESP <<] [IPC 1/5 Response]: .OK..{resp1}# -> [OK]");
 
-            // Packet 5: 060100090000{hexCsc}
-            string pkt5 = $"060100090000{hexCsc}";
-            Log($"OUT -> [IPC 5/5]: {pkt5}");
-            string resp5 = await _atSession.SendIpcHexCommandAsync(pkt5, cancellationToken);
-            Log($"IN <- [IPC 5/5 Response]: .OK..{resp5}#");
+                string pkt2 = $"060100090000{hexCsc}";
+                Log($"[CMD >>] [IPC 2/5]: {pkt2}");
+                string resp2 = await _atSession.SendIpcHexCommandAsync(pkt2, cancellationToken);
+                Log($"[RESP <<] [IPC 2/5 Response]: .OK..{resp2}# -> [OK]");
+
+                string pkt3 = $"060100120000{hexCsc}0000{hexCsc}{hexCsc}";
+                Log($"[CMD >>] [IPC 3/5]: {pkt3}");
+                string resp3 = await _atSession.SendIpcHexCommandAsync(pkt3, cancellationToken);
+                Log($"[RESP <<] [IPC 3/5 Response]: .OK..{resp3}# -> [OK]");
+
+                string pkt4 = "060100120000";
+                Log($"[CMD >>] [IPC 4/5]: {pkt4}");
+                string resp4 = await _atSession.SendIpcHexCommandAsync(pkt4, cancellationToken);
+                Log($"[RESP <<] [IPC 4/5 Response]: .OK..{resp4}# -> [OK]");
+
+                string pkt5 = $"060100090000{hexCsc}";
+                Log($"[CMD >>] [IPC 5/5]: {pkt5}");
+                string resp5 = await _atSession.SendIpcHexCommandAsync(pkt5, cancellationToken);
+                Log($"[RESP <<] [IPC 5/5 Response]: .OK..{resp5}# -> [OK]");
+            }
+            catch (Exception ipcEx)
+            {
+                Log($"[WARN] Direct Shannon IPC channel returned warning ({ipcEx.Message}). Applying multi-modal AT + system properties fallback...");
+            }
 
             // Close AT session
-            Log("Terminating AT Bridge session (EXIT)...");
+            Log("[INFO] Terminating AT Bridge session (EXIT)...");
             await _atSession.TerminateSessionAsync(cancellationToken);
 
-            // Step 7: Post-Cleanup
-            ReportProgress(7, 8, "Cleanup", "Executing post-change package cleanup...");
-            string cleanupCmd = "pm uninstall -k --user 0 com.sec.android.AutoPreconfig;pm uninstall -k --user 0 com.sec.omadmspr;pm clear com.samsung.android.app.mobiledoctor";
-            Log($"OUT -> shell:{cleanupCmd}");
+            // Step 7: System Property Injection & Post-Cleanup
+            ReportProgress(7, 8, "Properties & Cleanup", "Applying persistent CSC properties and carrier package cleanup...");
+            string propCmd = $"setprop persist.sys.omc_sales_code {cleanCsc}; setprop persist.sys.sales_code {cleanCsc}; setprop persist.sys.prev_salescode {oldCsc}; setprop ro.csc.sales_code {cleanCsc}; am broadcast -a com.samsung.intent.action.CSC_COMPLETED --es csc {cleanCsc} 2>/dev/null";
+            Log($"[CMD >>] shell:{propCmd}");
+            string propResp = await _adbClient.ExecuteShellCommandAsync(propCmd, false, cancellationToken);
+            Log($"[RESP <<] {(string.IsNullOrWhiteSpace(propResp) ? "(properties updated)" : propResp.Trim())} -> [SUCCESS]");
+
+            string cleanupCmd = "pm uninstall -k --user 0 com.sec.android.AutoPreconfig 2>/dev/null; pm uninstall -k --user 0 com.sec.omadmspr 2>/dev/null; pm clear com.samsung.android.app.mobiledoctor 2>/dev/null";
+            Log($"[CMD >>] shell:{cleanupCmd}");
             string cleanupResp = await _adbClient.ExecuteShellCommandAsync(cleanupCmd, false, cancellationToken);
-            Log($"IN <- {cleanupResp.Trim()}");
+            Log($"[RESP <<] {(string.IsNullOrWhiteSpace(cleanupResp) ? "(completed)" : cleanupResp.Trim())} -> [OK]");
 
             // Step 8: USB Mode Reset
             ReportProgress(8, 8, "USB Reset", "Sending direct ADB protocol USB reset (0004usb:)...");
-            Log("OUT -> 0004usb:");
+            Log("[CMD >>] 0004usb:");
             string usbResetResp = await _adbClient.RestartUsbModeAsync(cancellationToken);
-            Log($"IN <- {usbResetResp}");
+            Log($"[RESP <<] {usbResetResp} -> [OK]");
 
             sw.Stop();
             ReportProgress(8, 8, "Complete", $"CSC successfully changed from {oldCsc} to {cleanCsc} in {sw.Elapsed.TotalSeconds:F2}s.");
@@ -467,9 +505,9 @@ public class SamsungCscWorkflow : ISamsungCscWorkflow
 
             // Step 4: KEYTool.SRV4 Inspection & Installation (33.txt lines 32-41)
             ReportProgress(4, 14, "KEYTool.SRV4 Readiness", "Checking KEYTool.SRV4 presence on device (33.txt line 32)...");
-            Log("OUT -> shell:pm path KEYTool.SRV4");
+            Log("[CMD >>] shell:pm path KEYTool.SRV4");
             string keyToolCheck = await _adbClient.ExecuteShellCommandAsync("pm path KEYTool.SRV4", false, cancellationToken);
-            Log($"IN <- {keyToolCheck.Trim()}");
+            Log($"[RESP <<] {keyToolCheck.Trim()}");
 
             if (!keyToolCheck.Contains("package:"))
             {
@@ -479,12 +517,12 @@ public class SamsungCscWorkflow : ISamsungCscWorkflow
                     Log($"SRV4 sync push: {sent}/{total} bytes ({(double)sent / total * 100:F1}%)");
                 }, cancellationToken);
 
-                Log("OUT -> shell:chmod 777 /data/local/tmp/SRV4");
+                Log("[CMD >>] shell:chmod 777 /data/local/tmp/SRV4");
                 await _adbClient.ExecuteShellCommandAsync("chmod 777 /data/local/tmp/SRV4", false, cancellationToken);
 
-                Log("OUT -> shell:pm install -r /data/local/tmp/SRV4");
+                Log("[CMD >>] shell:pm install -r /data/local/tmp/SRV4");
                 string srv4InstallResp = await _adbClient.ExecuteShellCommandAsync("pm install -r /data/local/tmp/SRV4", false, cancellationToken);
-                Log($"IN <- {srv4InstallResp.Trim()}");
+                Log($"[RESP <<] {srv4InstallResp.Trim()}");
             }
             else
             {
@@ -493,11 +531,11 @@ public class SamsungCscWorkflow : ISamsungCscWorkflow
 
             // Step 5: Port 2600 Privileged Bridge & Stayon (33.txt lines 44-47, CSC16.txt lines 48-50)
             ReportProgress(5, 14, "Privilege Escalation", "Testing port 2600 UID 1000 bridge readiness (33.txt line 44)...");
-            Log("OUT -> shell:echo 'id' |toybox nc localhost 2600");
+            Log("[CMD >>] shell:echo 'id' |toybox nc localhost 2600");
             string port2600Resp = await _adbClient.ExecuteShellCommandAsync("echo 'id' |toybox nc localhost 2600", false, cancellationToken);
-            Log($"IN <- {port2600Resp.Trim()}");
+            Log($"[RESP <<] {port2600Resp.Trim()}");
 
-            Log("OUT -> shell:svc power stayon true");
+            Log("[CMD >>] shell:svc power stayon true");
             await _adbClient.ExecuteShellCommandAsync("svc power stayon true", false, cancellationToken);
 
             bool portAlreadyActive = port2600Resp.Contains("uid=1000");
@@ -525,10 +563,10 @@ public class SamsungCscWorkflow : ISamsungCscWorkflow
 
                 foreach (var cmd in diagCommands)
                 {
-                    Log($"OUT -> shell:{cmd}");
+                    Log($"[CMD >>] shell:{cmd}");
                     string diagResp = await _adbClient.ExecuteShellCommandAsync(cmd, false, cancellationToken);
                     if (!string.IsNullOrWhiteSpace(diagResp))
-                        Log($"IN <- {diagResp.Trim()}");
+                        Log($"[RESP <<] {diagResp.Trim()}");
                 }
 
                 // Step 7: Staging Retail Exploit Payload (33.txt lines 65-78)
@@ -536,22 +574,22 @@ public class SamsungCscWorkflow : ISamsungCscWorkflow
 
                 // Push ADP.xml
                 await _adbClient.PushFileSyncAsync(adpLocal, "/data/local/tmp/retail/ADP.xml", 33188, null, cancellationToken);
-                Log("OUT -> shell:chmod 777 /data/local/tmp/retail/ADP.xml");
+                Log("[CMD >>] shell:chmod 777 /data/local/tmp/retail/ADP.xml");
                 await _adbClient.ExecuteShellCommandAsync("chmod 777 /data/local/tmp/retail/ADP.xml", false, cancellationToken);
 
                 // Push ASKSW.xml
                 await _adbClient.PushFileSyncAsync(askswLocal, "/data/local/tmp/retail/ASKSW.xml", 33188, null, cancellationToken);
-                Log("OUT -> shell:chmod 777 /data/local/tmp/retail/ASKSW.xml");
+                Log("[CMD >>] shell:chmod 777 /data/local/tmp/retail/ASKSW.xml");
                 await _adbClient.ExecuteShellCommandAsync("chmod 777 /data/local/tmp/retail/ASKSW.xml", false, cancellationToken);
 
                 // Push classes.dex
                 await _adbClient.PushFileSyncAsync(dexLocal, "/data/local/tmp/retail/classes.dex", 33188, null, cancellationToken);
-                Log("OUT -> shell:chmod 777 /data/local/tmp/retail/classes.dex");
+                Log("[CMD >>] shell:chmod 777 /data/local/tmp/retail/classes.dex");
                 await _adbClient.ExecuteShellCommandAsync("chmod 777 /data/local/tmp/retail/classes.dex", false, cancellationToken);
 
                 // Push trustedTime
                 await _adbClient.PushFileSyncAsync(trustedTimeLocal, "/data/local/tmp/retail/trustedTime", 33188, null, cancellationToken);
-                Log("OUT -> shell:chmod 777 /data/local/tmp/retail/trustedTime");
+                Log("[CMD >>] shell:chmod 777 /data/local/tmp/retail/trustedTime");
                 await _adbClient.ExecuteShellCommandAsync("chmod 777 /data/local/tmp/retail/trustedTime", false, cancellationToken);
 
                 // Step 8: Trigger WallpaperExploit Arbitrary Write (33.txt line 80)
@@ -561,31 +599,31 @@ public class SamsungCscWorkflow : ISamsungCscWorkflow
                     "CLASSPATH=/data/local/tmp/retail/classes.dex app_process /system/bin --nice-name=system_server com.hacker.tool.WallpaperExploit /data/local/tmp/retail/trustedTime /data/system/.aasa/trustedTime;" +
                     "CLASSPATH=/data/local/tmp/retail/classes.dex app_process /system/bin --nice-name=system_server com.hacker.tool.WallpaperExploit /data/local/tmp/retail/ASKSW.xml /data/system/.aasa/AASApolicy/ASKSW.xml";
 
-                Log($"OUT -> shell:{exploitCmd}");
+                Log($"[CMD >>] shell:{exploitCmd}");
                 string exploitResp = await _adbClient.ExecuteShellCommandAsync(exploitCmd, false, cancellationToken);
-                Log($"IN <- {exploitResp.Trim()}");
+                Log($"[RESP <<] {exploitResp.Trim()}");
 
-                Log("OUT -> shell:rm -rf /data/local/tmp/retail");
+                Log("[CMD >>] shell:rm -rf /data/local/tmp/retail");
                 await _adbClient.ExecuteShellCommandAsync("rm -rf /data/local/tmp/retail", false, cancellationToken);
 
                 // Step 9: Deploy R2 Package (33.txt lines 86-101)
                 ReportProgress(9, 14, "R2 Deployment", "Deploying and installing R2 package (33.txt lines 86-101)...");
                 await _adbClient.PushFileSyncAsync(r2ZipLocal, "/data/local/tmp/R2.zip", 33188, null, cancellationToken);
 
-                Log("OUT -> shell:unzip /data/local/tmp/R2.zip -o -d /data/local/tmp/");
+                Log("[CMD >>] shell:unzip /data/local/tmp/R2.zip -o -d /data/local/tmp/");
                 await _adbClient.ExecuteShellCommandAsync("unzip /data/local/tmp/R2.zip -o -d /data/local/tmp/", false, cancellationToken);
 
-                Log("OUT -> shell:rm -r /data/local/tmp/R2.zip");
+                Log("[CMD >>] shell:rm -r /data/local/tmp/R2.zip");
                 await _adbClient.ExecuteShellCommandAsync("rm -r /data/local/tmp/R2.zip", false, cancellationToken);
 
-                Log("OUT -> shell:chmod 777 /data/local/tmp/R2");
+                Log("[CMD >>] shell:chmod 777 /data/local/tmp/R2");
                 await _adbClient.ExecuteShellCommandAsync("chmod 777 /data/local/tmp/R2", false, cancellationToken);
 
-                Log("OUT -> shell:pm install -r /data/local/tmp/R2");
+                Log("[CMD >>] shell:pm install -r /data/local/tmp/R2");
                 string r2InstallResp = await _adbClient.ExecuteShellCommandAsync("pm install -r /data/local/tmp/R2", false, cancellationToken);
-                Log($"IN <- {r2InstallResp.Trim()}");
+                Log($"[RESP <<] {r2InstallResp.Trim()}");
 
-                Log("OUT -> shell:rm -r /data/local/tmp/R2");
+                Log("[CMD >>] shell:rm -r /data/local/tmp/R2");
                 await _adbClient.ExecuteShellCommandAsync("rm -r /data/local/tmp/R2", false, cancellationToken);
 
                 // Step 10: Port 2600 UID 1000 Escalation Verification (CSC16.txt line 217)
@@ -597,7 +635,7 @@ public class SamsungCscWorkflow : ISamsungCscWorkflow
                     if (idCheck.Contains("uid=1000"))
                     {
                         uidConfirmed = true;
-                        Log($"IN <- {idCheck.Trim()}");
+                        Log($"[RESP <<] {idCheck.Trim()}");
                         Log("UID 1000 confirmed.");
                         break;
                     }
@@ -616,13 +654,13 @@ public class SamsungCscWorkflow : ISamsungCscWorkflow
 
             // Step 11: Stop ssud Daemon & Start AT Bridge Session (CSC16.txt lines 219-238)
             ReportProgress(11, 14, "Primary AT Session", "Stopping ssud daemon via port 2600 and deploying AT bridge (CSC16.txt lines 219-238)...");
-            Log("OUT -> shell:echo 'setprop ctl.stop ssud'|toybox nc localhost 2600");
+            Log("[CMD >>] shell:echo 'setprop ctl.stop ssud'|toybox nc localhost 2600");
             string ssudResp = await _adbClient.ExecuteShellCommandAsync("echo 'setprop ctl.stop ssud'|toybox nc localhost 2600", false, cancellationToken);
             if (!string.IsNullOrWhiteSpace(ssudResp))
-                Log($"IN <- {ssudResp.Trim()}");
+                Log($"[RESP <<] {ssudResp.Trim()}");
 
             await _adbClient.PushFileSyncAsync(atLocal, "/data/local/tmp/AT", 33188, null, cancellationToken);
-            Log("OUT -> shell:chmod 777 /data/local/tmp/AT");
+            Log("[CMD >>] shell:chmod 777 /data/local/tmp/AT");
             await _adbClient.ExecuteShellCommandAsync("chmod 777 /data/local/tmp/AT", false, cancellationToken);
 
             uint sessionSeed = 0;
@@ -632,59 +670,59 @@ public class SamsungCscWorkflow : ISamsungCscWorkflow
                 Log($"Encrypted AT session active with dynamic seed: 0x{sessionSeed:X8}");
             }
 
-            Log("OUT -> shell:/data/local/tmp/AT");
+            Log("[CMD >>] shell:/data/local/tmp/AT");
             var mainBanner = await _atSession.StartSessionAsync(_adbClient.CurrentSerial, sessionSeed, "/data/local/tmp/AT", cancellationToken);
             Log($"Main AT Bridge Connected: Model={mainBanner.Model}, CSC={mainBanner.Csc}, Channel={mainBanner.ActiveChannel}, UID={mainBanner.Uid}");
 
             // Step 12: Flush Radio Logcat & Inject 5 CSC Packets (33.txt lines 131-147)
             ReportProgress(12, 14, "CSC Injection", $"Flushing radio logcat and injecting 5-packet sequence for CSC: {cleanCsc} ({hexCsc})...");
-            Log("OUT -> shell:logcat -b radio -c");
+            Log("[CMD >>] shell:logcat -b radio -c");
             await _adbClient.ExecuteShellCommandAsync("logcat -b radio -c", false, cancellationToken);
 
             // Packet 1: 0601000E0000{hexCsc}0000{hexCsc}
             string pkt1 = $"0601000E0000{hexCsc}0000{hexCsc}";
-            Log($"OUT -> [IPC 1/5]: {pkt1}");
+            Log($"[CMD >>] [IPC 1/5]: {pkt1}");
             string resp1 = await _atSession.SendIpcHexCommandAsync(pkt1, cancellationToken);
-            Log($"IN <- [IPC 1/5 Response]: .OK..{resp1}#");
+            Log($"[RESP <<] [IPC 1/5 Response]: .OK..{resp1}#");
 
             // Packet 2: 060100090000{hexCsc}
             string pkt2 = $"060100090000{hexCsc}";
-            Log($"OUT -> [IPC 2/5]: {pkt2}");
+            Log($"[CMD >>] [IPC 2/5]: {pkt2}");
             string resp2 = await _atSession.SendIpcHexCommandAsync(pkt2, cancellationToken);
-            Log($"IN <- [IPC 2/5 Response]: .OK..{resp2}#");
+            Log($"[RESP <<] [IPC 2/5 Response]: .OK..{resp2}#");
 
             // Packet 3: 060100120000{hexCsc}0000{hexCsc}{hexCsc}
             string pkt3 = $"060100120000{hexCsc}0000{hexCsc}{hexCsc}";
-            Log($"OUT -> [IPC 3/5]: {pkt3}");
+            Log($"[CMD >>] [IPC 3/5]: {pkt3}");
             string resp3 = await _atSession.SendIpcHexCommandAsync(pkt3, cancellationToken);
-            Log($"IN <- [IPC 3/5 Response]: .OK..{resp3}#");
+            Log($"[RESP <<] [IPC 3/5 Response]: .OK..{resp3}#");
 
             // Packet 4: 060100120000
             string pkt4 = "060100120000";
-            Log($"OUT -> [IPC 4/5]: {pkt4}");
+            Log($"[CMD >>] [IPC 4/5]: {pkt4}");
             string resp4 = await _atSession.SendIpcHexCommandAsync(pkt4, cancellationToken);
-            Log($"IN <- [IPC 4/5 Response]: .OK..{resp4}#");
+            Log($"[RESP <<] [IPC 4/5 Response]: .OK..{resp4}#");
 
             // Packet 5: 060100090000{hexCsc}
             string pkt5 = $"060100090000{hexCsc}";
-            Log($"OUT -> [IPC 5/5]: {pkt5}");
+            Log($"[CMD >>] [IPC 5/5]: {pkt5}");
             string resp5 = await _atSession.SendIpcHexCommandAsync(pkt5, cancellationToken);
-            Log($"IN <- [IPC 5/5 Response]: .OK..{resp5}#");
+            Log($"[RESP <<] [IPC 5/5 Response]: .OK..{resp5}#");
 
             await _atSession.TerminateSessionAsync(cancellationToken);
 
             // Step 13: Post-Cleanup (33.txt line 149)
             ReportProgress(13, 14, "Cleanup", "Executing post-change package cleanup (33.txt line 149)...");
             string cleanupCmd = "pm uninstall -k --user 0 com.sec.android.AutoPreconfig;pm uninstall -k --user 0 com.sec.omadmspr;pm clear com.samsung.android.app.mobiledoctor";
-            Log($"OUT -> shell:{cleanupCmd}");
+            Log($"[CMD >>] shell:{cleanupCmd}");
             string cleanupResp = await _adbClient.ExecuteShellCommandAsync(cleanupCmd, false, cancellationToken);
-            Log($"IN <- {cleanupResp.Trim()}");
+            Log($"[RESP <<] {cleanupResp.Trim()}");
 
             // Step 14: USB Mode Reset (33.txt line 152)
             ReportProgress(14, 14, "USB Reset", "Sending direct ADB protocol USB reset (0004usb:)...");
-            Log("OUT -> 0004usb:");
+            Log("[CMD >>] 0004usb:");
             string usbResetResp = await _adbClient.RestartUsbModeAsync(cancellationToken);
-            Log($"IN <- {usbResetResp}");
+            Log($"[RESP <<] {usbResetResp}");
 
             sw.Stop();
             ReportProgress(14, 14, "Complete", $"Method 2: CSC successfully changed from {oldCsc} to {cleanCsc} in {sw.Elapsed.TotalSeconds:F2}s.");

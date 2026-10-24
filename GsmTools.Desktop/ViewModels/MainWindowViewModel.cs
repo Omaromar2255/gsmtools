@@ -17,6 +17,14 @@ public class MainWindowViewModel : ViewModelBase
     private readonly IBoostSprintWorkflow _boostWorkflow;
     private readonly IRadioControlWorkflow _radioWorkflow;
     private readonly IInteractiveAtWorkflow _interactiveWorkflow;
+    private readonly IModemSerialClient _modemSerialClient;
+
+    // --- Direct Modem Port & Batch Execution ---
+    private ObservableCollection<ModemPortInfo> _availableComPorts = new();
+    private ModemPortInfo? _selectedComPort;
+    private bool _isDirectModemMode = false;
+    private bool _isModemConnected = false;
+    private string _batchAtCommandsText = "AT\r\nAT+DEVCONINFO\r\nAT+CPIN?\r\nAT+PRECONFG=1,0\r\nAT+CFUN=1,1";
 
     // --- Device Telemetry Properties ---
     private string _model = "SM-S918U";
@@ -215,6 +223,56 @@ public class MainWindowViewModel : ViewModelBase
     public string CalculatedBcdPayload { get => _calculatedBcdPayload; set => SetProperty(ref _calculatedBcdPayload, value); }
 
     public string SecuritySeed { get => _securitySeed; set => SetProperty(ref _securitySeed, value); }
+
+    public ObservableCollection<ModemPortInfo> AvailableComPorts => _availableComPorts;
+    public ModemPortInfo? SelectedComPort
+    {
+        get => _selectedComPort;
+        set
+        {
+            if (SetProperty(ref _selectedComPort, value))
+            {
+                OnPropertyChanged(nameof(CanConnectModemPort));
+            }
+        }
+    }
+    public bool IsAdbBridgeMode
+    {
+        get => !_isDirectModemMode;
+        set
+        {
+            if (value && _isDirectModemMode)
+            {
+                IsDirectModemMode = false;
+            }
+        }
+    }
+
+    public bool IsDirectModemMode
+    {
+        get => _isDirectModemMode;
+        set
+        {
+            if (SetProperty(ref _isDirectModemMode, value))
+            {
+                OnPropertyChanged(nameof(IsAdbBridgeMode));
+            }
+        }
+    }
+    public bool IsModemConnected
+    {
+        get => _isModemConnected;
+        set
+        {
+            if (SetProperty(ref _isModemConnected, value))
+            {
+                OnPropertyChanged(nameof(ModemConnectButtonText));
+            }
+        }
+    }
+    public string ModemConnectButtonText => _isModemConnected ? "قطع الاتصال (Disconnect)" : "اتصال بالبورت (Connect Port)";
+    public bool CanConnectModemPort => _selectedComPort != null && !IsBusy;
+    public string BatchAtCommandsText { get => _batchAtCommandsText; set => SetProperty(ref _batchAtCommandsText, value); }
     public string TerminalInput { get => _terminalInput; set => SetProperty(ref _terminalInput, value); }
 
     public bool IsBusy { get => _isBusy; set => SetProperty(ref _isBusy, value); }
@@ -237,6 +295,11 @@ public class MainWindowViewModel : ViewModelBase
     public ICommand QuerySecuritySeedCommand { get; }
     public ICommand SendTerminalCommand { get; }
     public ICommand QuickAtCommand { get; }
+    public ICommand RefreshComPortsCommand { get; }
+    public ICommand ConnectModemPortCommand { get; }
+    public ICommand ExecuteBatchAtCommand { get; }
+    public ICommand LoadBatchPreset1Command { get; }
+    public ICommand LoadBatchPreset2Command { get; }
     public ICommand ClearLogCommand { get; }
     public ICommand CopyLogCommand { get; }
     public ICommand ExportLogCommand { get; }
@@ -247,18 +310,20 @@ public class MainWindowViewModel : ViewModelBase
         ISimLockWorkflow? simLockWorkflow = null,
         IBoostSprintWorkflow? boostWorkflow = null,
         IRadioControlWorkflow? radioWorkflow = null,
-        IInteractiveAtWorkflow? interactiveWorkflow = null)
+        IInteractiveAtWorkflow? interactiveWorkflow = null,
+        IModemSerialClient? modemSerialClient = null)
     {
         _cscWorkflow = cscWorkflow ?? throw new ArgumentNullException(nameof(cscWorkflow));
 
         var adbClient = new AdbRawSocketClient();
         var atSession = new PersistentAtBridgeSession(adbClient);
+        _modemSerialClient = modemSerialClient ?? new ModemSerialPortClient();
 
         _telemetryWorkflow = telemetryWorkflow ?? new DeviceTelemetryWorkflow(adbClient, atSession);
         _simLockWorkflow = simLockWorkflow ?? new SimLockWorkflow(adbClient, atSession);
         _boostWorkflow = boostWorkflow ?? new BoostSprintWorkflow(adbClient, atSession);
         _radioWorkflow = radioWorkflow ?? new RadioControlWorkflow(adbClient, atSession);
-        _interactiveWorkflow = interactiveWorkflow ?? new InteractiveAtWorkflow(adbClient, atSession);
+        _interactiveWorkflow = interactiveWorkflow ?? new InteractiveAtWorkflow(adbClient, atSession, _modemSerialClient);
 
         // Bind Workflow Events
         _cscWorkflow.OnLog += HandleWorkflowLog;
@@ -290,6 +355,13 @@ public class MainWindowViewModel : ViewModelBase
         QuerySecuritySeedCommand = new RelayCommand(async _ => await ExecuteQuerySecuritySeedAsync(), _ => !IsBusy);
         SendTerminalCommand = new RelayCommand(async _ => await ExecuteTerminalCommandAsync(), _ => !IsBusy && !string.IsNullOrWhiteSpace(TerminalInput));
         QuickAtCommand = new RelayCommand(async param => await ExecuteQuickAtAsync(param as string), _ => !IsBusy);
+        RefreshComPortsCommand = new RelayCommand(_ => RefreshComPorts(), _ => !IsBusy);
+        ConnectModemPortCommand = new RelayCommand(_ => ToggleModemPortConnection(), _ => CanConnectModemPort);
+        ExecuteBatchAtCommand = new RelayCommand(async _ => await ExecuteBatchAtAsync(), _ => !IsBusy);
+        LoadBatchPreset1Command = new RelayCommand(_ => LoadBatchPreset1());
+        LoadBatchPreset2Command = new RelayCommand(_ => LoadBatchPreset2());
+
+        RefreshComPorts();
 
         ClearLogCommand = new RelayCommand(_ => LogItems.Clear());
         CopyLogCommand = new RelayCommand(_ => CopyLogToClipboard());
@@ -429,7 +501,11 @@ public class MainWindowViewModel : ViewModelBase
         try
         {
             CscChangeResult result;
-            if (IsMethod2Selected)
+            if (IsDirectModemMode && IsModemConnected)
+            {
+                result = await _cscWorkflow.ExecuteCscChangeViaModemPortAsync(cscCode);
+            }
+            else if (IsMethod2Selected)
             {
                 result = await _cscWorkflow.ExecuteMethod2Async(cscCode, ArtifactsDirectory, UseEncryptedSession);
             }
@@ -606,7 +682,10 @@ public class MainWindowViewModel : ViewModelBase
 
         try
         {
-            string resp = await _interactiveWorkflow.ExecuteRawCommandAsync(cmd);
+            string resp = await _interactiveWorkflow.ExecuteRawCommandAsync(
+                cmd,
+                useDirectModem: IsDirectModemMode,
+                logCallback: HandleWorkflowLog);
             StatusText = $"Command finished. Response length: {resp.Length} chars.";
         }
         catch (Exception ex)
@@ -624,6 +703,114 @@ public class MainWindowViewModel : ViewModelBase
         if (string.IsNullOrWhiteSpace(atCmd)) return;
         TerminalInput = atCmd;
         await ExecuteTerminalCommandAsync();
+    }
+
+    public void RefreshComPorts()
+    {
+        try
+        {
+            var ports = _modemSerialClient.GetAvailablePorts();
+            _availableComPorts.Clear();
+            foreach (var p in ports)
+            {
+                _availableComPorts.Add(p);
+            }
+
+            var samsungModem = _availableComPorts.FirstOrDefault(p => p.IsSamsungModem);
+            SelectedComPort = samsungModem ?? _availableComPorts.FirstOrDefault();
+
+            if (_availableComPorts.Count > 0)
+            {
+                HandleWorkflowLog($"[INFO] Detected {_availableComPorts.Count} COM port(s). Selected: {SelectedComPort?.DisplayName}");
+            }
+            else
+            {
+                HandleWorkflowLog("[INFO] No serial COM ports detected. Connect Samsung device with USB Modem driver.");
+            }
+        }
+        catch (Exception ex)
+        {
+            HandleWorkflowLog($"[ERR] Port enumeration error: {ex.Message}");
+        }
+    }
+
+    private void ToggleModemPortConnection()
+    {
+        if (_selectedComPort == null) return;
+
+        try
+        {
+            if (_isModemConnected)
+            {
+                _modemSerialClient.Disconnect();
+                IsModemConnected = false;
+                HandleWorkflowLog($"[INFO] Disconnected from COM port {_selectedComPort.PortName}.");
+                StatusText = $"Modem disconnected ({_selectedComPort.PortName}).";
+            }
+            else
+            {
+                bool ok = _modemSerialClient.Connect(_selectedComPort.PortName);
+                IsModemConnected = ok;
+                if (ok)
+                {
+                    IsDirectModemMode = true;
+                    HandleWorkflowLog($"[OK] Successfully opened direct modem serial port: {_selectedComPort.PortName} ({_selectedComPort.Description})");
+                    StatusText = $"Connected to {_selectedComPort.PortName} ({_selectedComPort.Description})";
+                }
+                else
+                {
+                    HandleWorkflowLog($"[ERR] Failed to open COM port {_selectedComPort.PortName}. Port might be in use by another tool.");
+                    StatusText = $"Failed to open {_selectedComPort.PortName}";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            HandleWorkflowLog($"[ERR] Port toggle error: {ex.Message}");
+            StatusText = $"Port error: {ex.Message}";
+        }
+    }
+
+    private async Task ExecuteBatchAtAsync()
+    {
+        if (string.IsNullOrWhiteSpace(BatchAtCommandsText)) return;
+
+        IsBusy = true;
+        StatusText = $"Executing batch AT commands (Mode: {(IsDirectModemMode ? "Direct Modem Port" : "ADB / AT Bridge")})...";
+        ProgressValue = 0;
+
+        try
+        {
+            var results = await _interactiveWorkflow.ExecuteBatchCommandsAsync(
+                BatchAtCommandsText,
+                useDirectModem: IsDirectModemMode,
+                logCallback: HandleWorkflowLog);
+
+            int succeeded = results.Count(r => r.Success);
+            ProgressValue = 100;
+            StatusText = $"Batch finished: {succeeded}/{results.Count} commands succeeded.";
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Batch execution error: {ex.Message}";
+            HandleWorkflowLog($"[ERR] Batch execution aborted: {ex.Message}");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private void LoadBatchPreset1()
+    {
+        BatchAtCommandsText = "AT\r\nAT+DEVCONINFO\r\nAT+CPIN?\r\nAT+PRECONFG=1,0\r\nAT+CFUN=1,1";
+        StatusText = "Loaded Batch Preset 1: General Device & Modem Health Check (5 commands).";
+    }
+
+    private void LoadBatchPreset2()
+    {
+        BatchAtCommandsText = "AT+VERSNAME=1,9,0\r\nAT+CIMI\r\nAT+CLCK=\"PN\",2\r\nAT+CLCK=\"PU\",2\r\nAT+BATTEST=1,0";
+        StatusText = "Loaded Batch Preset 2: Network & 3GPP Locks Diagnostic (5 commands).";
     }
 
     private static string ExtractCscCode(string cscSelection)

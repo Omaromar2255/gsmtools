@@ -21,56 +21,109 @@ public class ConsoleLogItem
 
     public Brush ColorBrush => Level switch
     {
-        LogLevel.Outgoing => new SolidColorBrush(Color.FromRgb(0x4F, 0xC3, 0xF7)),  // Neon Light Blue
+        LogLevel.Outgoing => new SolidColorBrush(Color.FromRgb(0x4F, 0xC3, 0xF7)),  // Neon Light Blue / Cyan
         LogLevel.Incoming => new SolidColorBrush(Color.FromRgb(0x81, 0xC7, 0x84)),  // Neon Light Green
         LogLevel.Success  => new SolidColorBrush(Color.FromRgb(0x69, 0xF0, 0xAE)),  // Bright Accent Green
-        LogLevel.Warning  => new SolidColorBrush(Color.FromRgb(0xFF, 0xB7, 0x4D)),  // Warm Amber
-        LogLevel.Error    => new SolidColorBrush(Color.FromRgb(0xFF, 0x52, 0x52)),  // Neon Red
+        LogLevel.Warning  => new SolidColorBrush(Color.FromRgb(0xFF, 0xB7, 0x4D)),  // Warm Amber / Orange
+        LogLevel.Error    => new SolidColorBrush(Color.FromRgb(0xFF, 0x52, 0x52)),  // Neon Crimson Red
         _                 => new SolidColorBrush(Color.FromRgb(0xCF, 0xD8, 0xDC))   // Monospace Platinum
     };
 
     public static ConsoleLogItem FromRawString(string rawLine)
     {
-        // Sample: [17:40:24.928] OUT -> shell:logcat -b radio -c
         string ts = DateTime.Now.ToString("HH:mm:ss.fff");
         string dir = "INFO";
-        string msg = rawLine;
+        string msg = rawLine ?? string.Empty;
         LogLevel lvl = LogLevel.Info;
 
-        if (rawLine.StartsWith("["))
+        // Extract bracketed timestamp: [16:03:05.642] ...
+        if (msg.StartsWith("["))
         {
-            int closeBracket = rawLine.IndexOf(']');
-            if (closeBracket > 1)
+            int closeBracket = msg.IndexOf(']');
+            if (closeBracket > 1 && closeBracket < 16)
             {
-                ts = rawLine.Substring(1, closeBracket - 1);
-                msg = rawLine.Substring(closeBracket + 1).Trim();
+                ts = msg.Substring(1, closeBracket - 1);
+                msg = msg.Substring(closeBracket + 1).Trim();
             }
         }
 
-        if (msg.StartsWith("OUT ->", StringComparison.OrdinalIgnoreCase))
+        // Clean up duplicate prefixes and assign clean Direction
+        while (msg.StartsWith("OUT ->", StringComparison.OrdinalIgnoreCase) ||
+               msg.StartsWith("[CMD >>]", StringComparison.OrdinalIgnoreCase) ||
+               msg.StartsWith("CMD >>", StringComparison.OrdinalIgnoreCase))
         {
-            dir = "OUT ->";
+            dir = "CMD >>";
             lvl = LogLevel.Outgoing;
+            if (msg.StartsWith("OUT ->", StringComparison.OrdinalIgnoreCase))
+                msg = msg.Substring(6).Trim();
+            else if (msg.StartsWith("[CMD >>]", StringComparison.OrdinalIgnoreCase))
+                msg = msg.Substring(8).Trim();
+            else if (msg.StartsWith("CMD >>", StringComparison.OrdinalIgnoreCase))
+                msg = msg.Substring(6).Trim();
         }
-        else if (msg.StartsWith("IN <-", StringComparison.OrdinalIgnoreCase))
+
+        while (msg.StartsWith("IN <-", StringComparison.OrdinalIgnoreCase) ||
+               msg.StartsWith("[RESP <<]", StringComparison.OrdinalIgnoreCase) ||
+               msg.StartsWith("RESP <<", StringComparison.OrdinalIgnoreCase))
         {
-            dir = "IN <-";
+            dir = "RESP <<";
             lvl = LogLevel.Incoming;
+            if (msg.StartsWith("IN <-", StringComparison.OrdinalIgnoreCase))
+                msg = msg.Substring(5).Trim();
+            else if (msg.StartsWith("[RESP <<]", StringComparison.OrdinalIgnoreCase))
+                msg = msg.Substring(9).Trim();
+            else if (msg.StartsWith("RESP <<", StringComparison.OrdinalIgnoreCase))
+                msg = msg.Substring(7).Trim();
         }
-        else if (msg.Contains(".OK..") || msg.Contains("confirmed") || msg.Contains("successfully"))
+
+        if (string.IsNullOrWhiteSpace(msg) && (dir == "RESP <<" || lvl == LogLevel.Incoming))
         {
-            dir = "OK";
-            lvl = LogLevel.Success;
+            msg = "(empty response) -> [OK]";
         }
-        else if (msg.StartsWith("ERROR", StringComparison.OrdinalIgnoreCase) || msg.Contains("failed"))
-        {
-            dir = "ERR";
-            lvl = LogLevel.Error;
-        }
-        else if (msg.StartsWith("[STEP", StringComparison.OrdinalIgnoreCase))
+
+        // Check for Step headers
+        if (msg.StartsWith("STEP ", StringComparison.OrdinalIgnoreCase) || msg.StartsWith("[STEP", StringComparison.OrdinalIgnoreCase))
         {
             dir = "STEP";
             lvl = LogLevel.Warning;
+            if (msg.StartsWith("STEP ", StringComparison.OrdinalIgnoreCase))
+                msg = msg.Substring(5).Trim();
+        }
+        else if (msg.StartsWith("INFO ", StringComparison.OrdinalIgnoreCase))
+        {
+            dir = "INFO";
+            lvl = LogLevel.Info;
+            msg = msg.Substring(5).Trim();
+        }
+        else if (msg.StartsWith("ERR ", StringComparison.OrdinalIgnoreCase) || msg.StartsWith("ERROR", StringComparison.OrdinalIgnoreCase))
+        {
+            dir = "ERR";
+            lvl = LogLevel.Error;
+            if (msg.StartsWith("ERR ", StringComparison.OrdinalIgnoreCase))
+                msg = msg.Substring(4).Trim();
+        }
+        else if (msg.StartsWith("OK ", StringComparison.OrdinalIgnoreCase))
+        {
+            dir = "OK";
+            lvl = LogLevel.Success;
+            msg = msg.Substring(3).Trim();
+        }
+
+        // Detect Success / Failure tags in message
+        if (msg.Contains("[SUCCESS]") || msg.Contains("-> [OK]") || msg.Contains("completed successfully") || msg.Contains(".OK..") || msg.Contains(".OK_CSC.."))
+        {
+            if (lvl != LogLevel.Outgoing)
+            {
+                lvl = LogLevel.Success;
+            }
+        }
+        else if (msg.Contains("[FAILED]") || msg.Contains("failed") || msg.Contains("ERROR") || msg.Contains(".ERR_IPC..") || msg.Contains("Connection refused"))
+        {
+            lvl = LogLevel.Error;
+            if (dir == "INFO" || dir == "RESP <<")
+            {
+                dir = "FAIL";
+            }
         }
 
         return new ConsoleLogItem
