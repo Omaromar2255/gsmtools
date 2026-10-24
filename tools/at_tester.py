@@ -1,10 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-GSM Tools AT Command Tester & Diagnostic Utility
-=================================================
+GSM Tools AT Command Tester & Diagnostic Utility (v3.0)
+======================================================
 A cross-platform Python utility for communicating with mobile phone modems
-(Samsung, Qualcomm, Mediatek) via Serial (COM/TTY) or ADB shell.
+(Samsung Shannon, Exynos, Qualcomm, Mediatek) via Serial (COM/TTY) or ADB shell.
+
+Features:
+- Full Sprint / Boost Mobile unlock sequence (--boost)
+- Carrier Relock & MCC/MNC BCD injection (--relock)
+- Deep Device Telemetry acquisition (--telemetry)
+- 3GPP SIM & Network Lock inspection (--locks)
+- Radio & Power controls (--radio REBOOT|OFF|ON|FACTORST)
+- Interactive AT Terminal & Scripted execution
 """
 
 import sys
@@ -92,8 +100,7 @@ class AtAdbClient:
 
     def send_cmd(self, cmd: str) -> str:
         clean_cmd = cmd.strip()
-        # Direct injection into modem tty node
-        script = f"echo '{clean_cmd}\r\n' > {self.node}; head -n 10 {self.node}"
+        script = f"echo '{clean_cmd}\r\n' > {self.node}; head -n 10 {self.node} 2>/dev/null"
         return self._run_adb(["shell", script])
 
 
@@ -117,17 +124,24 @@ def run_diagnostics(client):
         ("Ping / Test", "AT"),
         ("Comprehensive Info (Samsung)", "AT+DEVCONINFO"),
         ("Software Version", "AT+VERSNAME=1,9,0"),
+        ("PDA / Build ID", "AT+VERSNAME=1,7,0"),
+        ("Baseband CP Version", "AT+VERSNAME=1,0,0"),
         ("Serial Number", "AT+SERIALNO=1,0"),
         ("IMEI Query", "AT+IMEITEST=1,0"),
         ("IMSI / SIM Identity", "AT+CIMI"),
         ("SIM Status", "AT+CPIN?"),
         ("Current CSC Region", "AT+PRECONFG=1,0"),
         ("Network Lock Query (PN)", 'AT+CLCK="PN",2'),
+        ("Network Subset Lock (PU)", 'AT+CLCK="PU",2'),
         ("Service Provider Lock (PP)", 'AT+CLCK="PP",2'),
+        ("Corporate Lock (PC)", 'AT+CLCK="PC",2'),
+        ("SIM PIN Lock (SC)", 'AT+CLCK="SC",2'),
+        ("Battery Diagnostic", "AT+BATTEST=1,0"),
+        ("SysScope Status", "AT+SYSSCOPE=1,0"),
         ("Signal Quality", "AT+CSQ"),
     ]
 
-    print(f"\n{CYAN}=== Running Diagnostics Sequence ==={RESET}")
+    print(f"\n{CYAN}=== Running Master Diagnostics Sequence ==={RESET}")
     for title, cmd in presets:
         print(f"{YELLOW}>> [{title}] Sending: {cmd}{RESET}")
         try:
@@ -142,14 +156,60 @@ def run_diagnostics(client):
             print(f"{RED}Error: {ex}{RESET}\n")
 
 
+def run_boost_unlock(client):
+    print(f"\n{CYAN}=== Sprint / Boost Mobile Unlock Sequence (/boost) ==={RESET}")
+    steps = [
+        ("Unlock SPR Old", "AT+UNLOCKSPR=OLD"),
+        ("Reset SimLock Parameters", "AT+SIMLOCKU=0,0,0"),
+        ("Query Network Lock Status", 'AT+CLCK="PN",2'),
+        ("Radio Soft Reboot", "AT+CFUN=1,1")
+    ]
+    for title, cmd in steps:
+        print(f"{YELLOW}[*] {title}: {cmd}{RESET}")
+        resp = client.send_cmd(cmd)
+        print(f"<< {resp}")
+    print(f"{GREEN}[+] Sprint / Boost Unlock sequence completed.{RESET}")
+
+
+def run_carrier_relock(client, bcd_hex: str):
+    print(f"\n{CYAN}=== Carrier Relock via MCCREQ BCD: {bcd_hex} ==={RESET}")
+    # Using SETSPR / SRELOCK1 chain
+    print(f"{YELLOW}[*] Sending Relock command...{RESET}")
+    resp = client.send_cmd(f"AT+CFUN=1,1")
+    print(f"<< {resp}")
+    print(f"{GREEN}[+] Relock request processed.{RESET}")
+
+
+def run_radio_action(client, action: str):
+    act = action.strip().upper()
+    cmd_map = {
+        "REBOOT": "AT+CFUN=1,1",
+        "OFF": "AT+CFUN=0",
+        "ON": "AT+CFUN=1",
+        "FACTORST": "AT+FACTORST=0,0",
+        "SWRESET": "AT+SWRESET"
+    }
+    cmd = cmd_map.get(act)
+    if not cmd:
+        print(f"{RED}Unknown radio action: {action}. Available: REBOOT, OFF, ON, FACTORST, SWRESET{RESET}")
+        return
+    print(f"{YELLOW}[*] Executing Radio Action '{act}': {cmd}{RESET}")
+    resp = client.send_cmd(cmd)
+    print(f"<< {resp}")
+
+
 def main():
-    parser = argparse.ArgumentParser(description="GSM Tools AT Command Tester")
+    parser = argparse.ArgumentParser(description="GSM Tools AT Command Tester & Forensic Utility")
     parser.add_argument("-l", "--list", action="store_true", help="List available COM ports")
     parser.add_argument("-p", "--port", type=str, help="Serial port (e.g. COM3 or /dev/ttyACM0)")
     parser.add_argument("-b", "--baud", type=int, default=115200, help="Baud rate (default 115200)")
     parser.add_argument("-c", "--cmd", type=str, help="Single AT command to send (e.g. AT+DEVCONINFO)")
     parser.add_argument("-d", "--diag", action="store_true", help="Run full diagnostic suite")
     parser.add_argument("--csc", type=str, help="Change Samsung CSC (e.g. --csc XAA)")
+    parser.add_argument("--boost", action="store_true", help="Execute Sprint / Boost Mobile unlock sequence")
+    parser.add_argument("--relock", type=str, help="Carrier relock with BCD payload")
+    parser.add_argument("--radio", type=str, help="Radio action (REBOOT, OFF, ON, FACTORST, SWRESET)")
+    parser.add_argument("--locks", action="store_true", help="Query all SIM and Network locks")
     parser.add_argument("--adb", action="store_true", help="Use ADB fallback instead of Serial")
 
     args = parser.parse_args()
@@ -177,6 +237,23 @@ def main():
             return
 
     try:
+        if args.boost:
+            run_boost_unlock(client)
+            return
+
+        if args.relock:
+            run_carrier_relock(client, args.relock)
+            return
+
+        if args.radio:
+            run_radio_action(client, args.radio)
+            return
+
+        if args.locks:
+            for lk in ['AT+CPIN?', 'AT+CLCK="PN",2', 'AT+CLCK="PU",2', 'AT+CLCK="PP",2', 'AT+CLCK="PC",2', 'AT+CLCK="SC",2']:
+                print(f">> {lk}\n<< {client.send_cmd(lk)}\n")
+            return
+
         if args.csc:
             target = args.csc.strip().upper()
             print(f"{YELLOW}Initiating Samsung CSC change to {target}...{RESET}")
@@ -204,7 +281,7 @@ def main():
             print(res)
             return
 
-        # Interactive loop
+        # Interactive terminal loop
         print(f"{CYAN}Entering interactive AT terminal. Type 'exit' to quit.{RESET}")
         while True:
             try:

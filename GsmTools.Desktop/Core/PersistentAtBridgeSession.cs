@@ -22,6 +22,11 @@ public interface IPersistentAtBridgeSession : IAsyncDisposable
     Task<string> SendIpcHexCommandAsync(string hexCommand, CancellationToken cancellationToken = default);
     Task<string> SendAtCommandAsync(string atCommand, CancellationToken cancellationToken = default);
     Task<string> QuerySimLocksAsync(CancellationToken cancellationToken = default);
+    Task<string> QueryFullTelemetryAsync(CancellationToken cancellationToken = default);
+    Task<string> ExecuteBoostUnlockAsync(CancellationToken cancellationToken = default);
+    Task<string> ExecuteCarrierRelockAsync(string bcdHex, CancellationToken cancellationToken = default);
+    Task<string> ExecuteRadioActionAsync(string action, CancellationToken cancellationToken = default);
+    Task<string> QueryAkSeedNoAsync(CancellationToken cancellationToken = default);
     Task TerminateSessionAsync(CancellationToken cancellationToken = default);
     AtBridgeBanner? Banner { get; }
     uint SessionSeed { get; }
@@ -72,21 +77,17 @@ public class PersistentAtBridgeSession : IPersistentAtBridgeSession
             var parsedBanner = ParseBanner(bannerOutput);
 
             // Step 3: Smart UID 1000 Relay Fallback
-            // If shell is UID 2000 and has no channel access (CH=NONE), attempt relay via port 2600
             if (parsedBanner.Uid != 1000 && parsedBanner.ActiveChannel == "NONE")
             {
-                // Test if port 2600 is responding
                 string idCheck = await _adbClient.ExecuteShellCommandAsync("echo 'id' |toybox nc localhost 2600", false, cancellationToken);
                 if (idCheck.Contains("uid=1000"))
                 {
-                    // Close unprivileged session and launch relay
                     await TerminateSessionInternalAsync(cancellationToken);
 
                     _shellClient = await _adbClient.OpenInteractiveShellAsync("toybox nc localhost 2600", serial, cancellationToken);
                     _stream = _shellClient.GetStream();
                     _readBuffer.Clear();
 
-                    // Launch AT binary inside UID 1000 context
                     byte[] startCmd = Encoding.ASCII.GetBytes($"{customCommand}\n");
                     await _stream.WriteAsync(startCmd, cancellationToken);
                     await _stream.FlushAsync(cancellationToken);
@@ -115,7 +116,7 @@ public class PersistentAtBridgeSession : IPersistentAtBridgeSession
             }
             else
             {
-                SessionSeed = 0; // Raw Hex Mode matching csc 15.txt
+                SessionSeed = 0; // Raw Mode matching csc 15.txt
             }
 
             return Banner;
@@ -142,7 +143,6 @@ public class PersistentAtBridgeSession : IPersistentAtBridgeSession
             if (!Regex.IsMatch(payloadToSend, "^[0-9A-Fa-f]+$"))
                 throw new FormatException($"Invalid hex syntax for IPC command: '{hexCommand}'");
 
-            // Obfuscate outgoing payload if encrypted session is enabled
             if (SessionSeed > 0)
             {
                 byte[] binPayload = Convert.FromHexString(payloadToSend);
@@ -154,7 +154,6 @@ public class PersistentAtBridgeSession : IPersistentAtBridgeSession
             await _stream.WriteAsync(cmdBytes, cancellationToken);
             await _stream.FlushAsync(cancellationToken);
 
-            // Read response until "<< " prompt
             string resp = await ReadUntilPromptAsync("<< ", TimeSpan.FromSeconds(15), cancellationToken);
 
             if (resp.Contains(".ERR_IPC.."))
@@ -162,7 +161,6 @@ public class PersistentAtBridgeSession : IPersistentAtBridgeSession
             if (resp.Contains(".ERR_SYNTAX.."))
                 throw new FormatException($"AT bridge returned .ERR_SYNTAX.. for command: {hexCommand}");
 
-            // Look for .OK..<HEX># or .OK..#
             var match = Regex.Match(resp, @"\.OK\.\.(?<hex>[0-9A-Fa-f]*)#");
             if (match.Success)
             {
@@ -176,7 +174,6 @@ public class PersistentAtBridgeSession : IPersistentAtBridgeSession
                 return respHex;
             }
 
-            // Return full response string if matching standard OK
             if (resp.Contains(".OK.."))
                 return "OK";
 
@@ -228,6 +225,126 @@ public class PersistentAtBridgeSession : IPersistentAtBridgeSession
         try
         {
             byte[] cmdBytes = Encoding.ASCII.GetBytes("LOCKS\n");
+            await _stream.WriteAsync(cmdBytes, cancellationToken);
+            await _stream.FlushAsync(cancellationToken);
+
+            string resp = await ReadUntilPromptAsync("<< ", TimeSpan.FromSeconds(10), cancellationToken);
+            return resp.Trim();
+        }
+        finally
+        {
+            _sessionLock.Release();
+        }
+    }
+
+    /// <summary>
+    /// Queries full device telemetry (AT+DEVCONINFO, VERSNAME, IMEI, props) via DEVINFO command.
+    /// </summary>
+    public async Task<string> QueryFullTelemetryAsync(CancellationToken cancellationToken = default)
+    {
+        if (_stream == null || !IsActive)
+            throw new InvalidOperationException("AT bridge session is not active.");
+
+        await _sessionLock.WaitAsync(cancellationToken);
+        try
+        {
+            byte[] cmdBytes = Encoding.ASCII.GetBytes("DEVINFO\n");
+            await _stream.WriteAsync(cmdBytes, cancellationToken);
+            await _stream.FlushAsync(cancellationToken);
+
+            string resp = await ReadUntilPromptAsync("<< ", TimeSpan.FromSeconds(15), cancellationToken);
+            return resp.Trim();
+        }
+        finally
+        {
+            _sessionLock.Release();
+        }
+    }
+
+    /// <summary>
+    /// Executes Sprint / Boost Mobile unlock sequence (/boost) via BOOST command.
+    /// </summary>
+    public async Task<string> ExecuteBoostUnlockAsync(CancellationToken cancellationToken = default)
+    {
+        if (_stream == null || !IsActive)
+            throw new InvalidOperationException("AT bridge session is not active.");
+
+        await _sessionLock.WaitAsync(cancellationToken);
+        try
+        {
+            byte[] cmdBytes = Encoding.ASCII.GetBytes("BOOST\n");
+            await _stream.WriteAsync(cmdBytes, cancellationToken);
+            await _stream.FlushAsync(cancellationToken);
+
+            string resp = await ReadUntilPromptAsync("<< ", TimeSpan.FromSeconds(20), cancellationToken);
+            return resp.Trim();
+        }
+        finally
+        {
+            _sessionLock.Release();
+        }
+    }
+
+    /// <summary>
+    /// Executes carrier relock via RELOCK: command with MCC/MNC BCD payload.
+    /// </summary>
+    public async Task<string> ExecuteCarrierRelockAsync(string bcdHex, CancellationToken cancellationToken = default)
+    {
+        if (_stream == null || !IsActive)
+            throw new InvalidOperationException("AT bridge session is not active.");
+
+        await _sessionLock.WaitAsync(cancellationToken);
+        try
+        {
+            byte[] cmdBytes = Encoding.ASCII.GetBytes($"RELOCK:{bcdHex.Trim()}\n");
+            await _stream.WriteAsync(cmdBytes, cancellationToken);
+            await _stream.FlushAsync(cancellationToken);
+
+            string resp = await ReadUntilPromptAsync("<< ", TimeSpan.FromSeconds(15), cancellationToken);
+            return resp.Trim();
+        }
+        finally
+        {
+            _sessionLock.Release();
+        }
+    }
+
+    /// <summary>
+    /// Executes a radio action (REBOOT, OFF, ON, FACTORST, SWRESET) via RADIO: command.
+    /// </summary>
+    public async Task<string> ExecuteRadioActionAsync(string action, CancellationToken cancellationToken = default)
+    {
+        if (_stream == null || !IsActive)
+            throw new InvalidOperationException("AT bridge session is not active.");
+
+        await _sessionLock.WaitAsync(cancellationToken);
+        try
+        {
+            byte[] cmdBytes = Encoding.ASCII.GetBytes($"RADIO:{action.Trim().ToUpperInvariant()}\n");
+            await _stream.WriteAsync(cmdBytes, cancellationToken);
+            await _stream.FlushAsync(cancellationToken);
+
+            string resp = await ReadUntilPromptAsync("<< ", TimeSpan.FromSeconds(15), cancellationToken);
+            return resp.Trim();
+        }
+        finally
+        {
+            _sessionLock.Release();
+        }
+    }
+
+    /// <summary>
+    /// Queries the modem security challenge seed (AT+AKSEEDNO=1,0) via AKSEED command.
+    /// </summary>
+    public async Task<string> QueryAkSeedNoAsync(CancellationToken cancellationToken = default)
+    {
+        if (_stream == null || !IsActive)
+            throw new InvalidOperationException("AT bridge session is not active.");
+
+        await _sessionLock.WaitAsync(cancellationToken);
+        try
+        {
+            byte[] cmdBytes = Encoding.ASCII.GetBytes("AKSEED\n");
             await _stream.WriteAsync(cmdBytes, cancellationToken);
             await _stream.FlushAsync(cancellationToken);
 
@@ -300,7 +417,7 @@ public class PersistentAtBridgeSession : IPersistentAtBridgeSession
             int idx = current.IndexOf(prompt, StringComparison.Ordinal);
             if (idx >= 0)
             {
-                string result = current.Substring(0, idx + prompt.Length);
+                string result = current.Substring(0, idx);
                 _readBuffer.Remove(0, idx + prompt.Length);
                 return result;
             }
@@ -317,7 +434,6 @@ public class PersistentAtBridgeSession : IPersistentAtBridgeSession
 
     private static AtBridgeBanner ParseBanner(string output)
     {
-        // INFO|MODEL=SM-S918U|CSC=ATT|AND=15|PATCH=2025-07-01|DBG=0|UID=1000|CH=/dev/umts_ipc0
         string model = "N/A", csc = "N/A", andVer = "N/A", patch = "N/A", dbg = "0", ch = "NONE";
         int uid = -1;
 

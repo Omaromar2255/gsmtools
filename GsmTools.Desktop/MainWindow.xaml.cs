@@ -17,8 +17,21 @@ public partial class MainWindow : Window
         // Instantiate core architectural services
         var adbClient = new AdbRawSocketClient();
         var atSession = new PersistentAtBridgeSession(adbClient);
-        var workflow = new SamsungCscWorkflow(adbClient, atSession);
 
-        DataContext = new MainWindowViewModel(workflow);
+        var cscWorkflow = new SamsungCscWorkflow(adbClient, atSession);
+        var telemetryWorkflow = new DeviceTelemetryWorkflow(adbClient, atSession);
+        var simLockWorkflow = new SimLockWorkflow(adbClient, atSession);
+        var boostWorkflow = new BoostSprintWorkflow(adbClient, atSession);
+        var radioWorkflow = new RadioControlWorkflow(adbClient, atSession);
+        var interactiveWorkflow = new InteractiveAtWorkflow(adbClient, atSession);
+
+        DataContext = new MainWindowViewModel(
+            cscWorkflow,
+            telemetryWorkflow,
+            simLockWorkflow,
+            boostWorkflow,
+            radioWorkflow,
+            interactiveWorkflow
+        );
     }
 }

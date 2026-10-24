@@ -5,14 +5,14 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:controls="clr-namespace:GsmTools.Desktop.UI.Controls"
         mc:Ignorable="d"
-        Title="GsmTools Desktop v2.0 - Samsung CSC Forensic Orchestrator (Android 14/15)"
-        Height="820" Width="1180"
-        MinHeight="720" MinWidth="1050"
+        Title="GsmTools Desktop v3.0 Pro - Multi-Modal AT, RIL, Boost &amp; CSC Orchestrator"
+        Height="860" Width="1240"
+        MinHeight="750" MinWidth="1100"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource BgDarkPrimary}"
         Foreground="{StaticResource TextPrimary}">
 
-    <Grid Margin="16">
+    <Grid Margin="14">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" /> <!-- Top Header -->
             <RowDefinition Height="*" />    <!-- Main Content -->
@@ -21,7 +21,7 @@
 
         <!-- Top Header -->
         <Border Grid.Row="0" Background="{StaticResource BgCardPrimary}" BorderBrush="{StaticResource BorderSubtle}"
-                BorderThickness="1" CornerRadius="8" Padding="16,12" Margin="0,0,0,14">
+                BorderThickness="1" CornerRadius="8" Padding="16,12" Margin="0,0,0,12">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -29,12 +29,12 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Border Background="#0044AA" CornerRadius="6" Width="38" Height="38" Margin="0,0,12,0">
-                        <TextBlock Text="⚡" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    <Border Background="#0044AA" CornerRadius="6" Width="40" Height="40" Margin="0,0,12,0">
+                        <TextBlock Text="⚡" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <StackPanel>
-                        <TextBlock Text="GSMTOOLS FORENSIC ORCHESTRATOR" FontSize="18" FontWeight="Bold" Foreground="{StaticResource AccentCyan}" />
-                        <TextBlock Text="Native ADB TCP Socket Client &amp; Samsung RIL/IPC/AT Bridge v2 (Zero-Process Engine)"
+                        <TextBlock Text="GSMTOOLS FORENSIC MASTER ORCHESTRATOR v3.0" FontSize="18" FontWeight="Bold" Foreground="{StaticResource AccentCyan}" />
+                        <TextBlock Text="Sprint/Boost Unlock (/boost), Carrier Relock, Multi-Modal RIL/IPC/AT Bridge, Deep Telemetry &amp; CSC Changer"
                                    FontSize="12" Foreground="{StaticResource TextSecondary}" />
                     </StackPanel>
                 </StackPanel>
@@ -44,244 +44,545 @@
                             CornerRadius="14" Padding="12,5" Margin="0,0,8,0">
                         <StackPanel Orientation="Horizontal">
                             <Ellipse Width="8" Height="8" Fill="{StaticResource AccentGreen}" Margin="0,0,6,0" VerticalAlignment="Center" />
-                            <TextBlock Text="ADB 127.0.0.1:5037 ACTIVE" FontSize="11" FontWeight="Bold" Foreground="{StaticResource AccentGreen}" />
+                            <TextBlock Text="ADB TCP ACTIVE" FontSize="11" FontWeight="Bold" Foreground="{StaticResource AccentGreen}" />
                         </StackPanel>
                     </Border>
                     <Border Background="#162035" BorderBrush="{StaticResource AccentBlue}" BorderThickness="1"
                             CornerRadius="14" Padding="12,5">
                         <StackPanel Orientation="Horizontal">
                             <Ellipse Width="8" Height="8" Fill="{StaticResource AccentCyan}" Margin="0,0,6,0" VerticalAlignment="Center" />
-                            <TextBlock Text="CSC 15.TXT &amp; 33.TXT SYNCED" FontSize="11" FontWeight="Bold" Foreground="{StaticResource AccentCyan}" />
+                            <TextBlock Text="AT BRIDGE v3.0 CONNECTED" FontSize="11" FontWeight="Bold" Foreground="{StaticResource AccentCyan}" />
                         </StackPanel>
                     </Border>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- Main Body: Two Columns (Left: Telemetry & Controls, Right: Live Console) -->
+        <!-- Main Body: Two Columns (Left: Tabbed Operations, Right: Live Console) -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="480" MinWidth="420" />
-                <ColumnDefinition Width="14" />
-                <ColumnDefinition Width="*" MinWidth="450" />
+                <ColumnDefinition Width="580" MinWidth="480" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="*" MinWidth="460" />
             </Grid.ColumnDefinitions>
 
-            <!-- Left Column: Telemetry Cards & CSC Execution -->
-            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
-                <StackPanel>
-                    <!-- Card 1: Device Telemetry -->
-                    <Border Style="{StaticResource CardBorderStyle}">
-                        <StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                <TextBlock Text="📱" FontSize="14" Margin="0,0,8,0" />
-                                <TextBlock Text="DEVICE TELEMETRY PANEL" FontSize="13" FontWeight="Bold" Foreground="{StaticResource AccentCyan}" />
-                            </StackPanel>
+            <!-- Left Column: Operations Tabs -->
+            <TabControl Grid.Column="0" Background="Transparent" BorderThickness="0">
+                <TabControl.Resources>
+                    <Style TargetType="TabItem">
+                        <Setter Property="Background" Value="#161B28" />
+                        <Setter Property="Foreground" Value="{StaticResource TextSecondary}" />
+                        <Setter Property="FontSize" Value="12" />
+                        <Setter Property="FontWeight" Value="SemiBold" />
+                        <Setter Property="Padding" Value="10,6" />
+                        <Setter Property="Margin" Value="0,0,4,6" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="TabItem">
+                                    <Border Name="Border" Background="{TemplateBinding Background}" BorderBrush="{StaticResource BorderSubtle}"
+                                            BorderThickness="1" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                        <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter TargetName="Border" Property="Background" Value="#1A2844" />
+                                            <Setter TargetName="Border" Property="BorderBrush" Value="{StaticResource AccentCyan}" />
+                                            <Setter Property="Foreground" Value="{StaticResource AccentCyan}" />
+                                        </Trigger>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Border" Property="BorderBrush" Value="{StaticResource AccentBlue}" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </TabControl.Resources>
 
-                            <Grid Margin="0,2">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="120" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="26" />
-                                    <RowDefinition Height="26" />
-                                    <RowDefinition Height="26" />
-                                    <RowDefinition Height="26" />
-                                    <RowDefinition Height="26" />
-                                    <RowDefinition Height="26" />
-                                    <RowDefinition Height="26" />
-                                    <RowDefinition Height="26" />
-                                </Grid.RowDefinitions>
-
-                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Model:" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
-                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Model}" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center" />
-
-                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Serial Number:" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
-                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Serial}" FontWeight="SemiBold" Foreground="{StaticResource AccentCyan}" VerticalAlignment="Center" />
-
-                                <TextBlock Grid.Row="2" Grid.Column="0" Text="IMEI (Parcel):" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
-                                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Imei}" FontWeight="Bold" Foreground="{StaticResource AccentGreen}" VerticalAlignment="Center" />
-
-                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Current CSC:" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
-                                <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding CurrentCsc}" FontWeight="Bold" Foreground="{StaticResource AccentOrange}" VerticalAlignment="Center" />
-
-                                <TextBlock Grid.Row="4" Grid.Column="0" Text="Product Code:" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
-                                <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding ProductCode}" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center" />
-
-                                <TextBlock Grid.Row="5" Grid.Column="0" Text="Android Version:" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
-                                <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding AndroidVersion, StringFormat='Android {0}'}" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center" />
-
-                                <TextBlock Grid.Row="6" Grid.Column="0" Text="Build Number:" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
-                                <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding BuildNumber}" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center" />
-
-                                <TextBlock Grid.Row="7" Grid.Column="0" Text="Security Patch:" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
-                                <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding SecurityPatch}" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center" />
-                            </Grid>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Card 2: Security & Privilege Status Badges -->
-                    <Border Style="{StaticResource CardBorderStyle}">
-                        <StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                <TextBlock Text="🛡️" FontSize="14" Margin="0,0,8,0" />
-                                <TextBlock Text="SECURITY &amp; PRIVILEGE STATUS BADGES" FontSize="13" FontWeight="Bold" Foreground="{StaticResource AccentCyan}" />
-                            </StackPanel>
-
-                            <WrapPanel Orientation="Horizontal">
-                                <Border Background="#1E2333" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1"
-                                        CornerRadius="5" Padding="10,6" Margin="0,0,8,8">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="SELinux: " Foreground="{StaticResource TextSecondary}" FontSize="11" />
-                                        <TextBlock Text="{Binding SelinuxStatus}" FontWeight="Bold" Foreground="{StaticResource AccentGreen}" FontSize="11" />
-                                    </StackPanel>
-                                </Border>
-
-                                <Border Background="#1E2333" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1"
-                                        CornerRadius="5" Padding="10,6" Margin="0,0,8,8">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="RSU App: " Foreground="{StaticResource TextSecondary}" FontSize="11" />
-                                        <TextBlock Text="{Binding RsuAppStatus}" FontWeight="Bold" Foreground="{StaticResource AccentCyan}" FontSize="11" />
-                                    </StackPanel>
-                                </Border>
-
-                                <Border Background="#1E2333" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1"
-                                        CornerRadius="5" Padding="10,6" Margin="0,0,8,8">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="tsdaemon: " Foreground="{StaticResource TextSecondary}" FontSize="11" />
-                                        <TextBlock Text="{Binding TsdaemonStatus}" FontWeight="Bold" Foreground="{StaticResource AccentCyan}" FontSize="11" />
-                                    </StackPanel>
-                                </Border>
-
-                                <Border Background="#1E2333" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1"
-                                        CornerRadius="5" Padding="10,6" Margin="0,0,8,8">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="Port 2600: " Foreground="{StaticResource TextSecondary}" FontSize="11" />
-                                        <TextBlock Text="{Binding Port2600Status}" FontWeight="Bold" Foreground="{StaticResource AccentGreen}" FontSize="11" />
-                                    </StackPanel>
-                                </Border>
-
-                                <Border Background="#1E2333" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1"
-                                        CornerRadius="5" Padding="10,6" Margin="0,0,8,8">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="Retail Mode: " Foreground="{StaticResource TextSecondary}" FontSize="11" />
-                                        <TextBlock Text="{Binding RetailAgentStatus}" FontWeight="Bold" Foreground="{StaticResource AccentOrange}" FontSize="11" />
-                                    </StackPanel>
-                                </Border>
-
-                                <Border Background="#1E2333" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1"
-                                        CornerRadius="5" Padding="10,6" Margin="0,0,8,8">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="AT Channel: " Foreground="{StaticResource TextSecondary}" FontSize="11" />
-                                        <TextBlock Text="{Binding AtChannelStatus}" FontWeight="Bold" Foreground="{StaticResource AccentCyan}" FontSize="11" />
-                                    </StackPanel>
-                                </Border>
-
-                                <Border Background="#1E2333" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1"
-                                        CornerRadius="5" Padding="10,6" Margin="0,0,8,8">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="SIM State: " Foreground="{StaticResource TextSecondary}" FontSize="11" />
-                                        <TextBlock Text="{Binding SimCardStatus}" FontWeight="Bold" Foreground="{StaticResource AccentCyan}" FontSize="11" />
-                                    </StackPanel>
-                                </Border>
-
-                                <Border Background="#1E2333" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1"
-                                        CornerRadius="5" Padding="10,6" Margin="0,0,8,8">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="Network Lock: " Foreground="{StaticResource TextSecondary}" FontSize="11" />
-                                        <TextBlock Text="{Binding NetworkLockStatus}" FontWeight="Bold" Foreground="{StaticResource AccentGreen}" FontSize="11" />
-                                    </StackPanel>
-                                </Border>
-                            </WrapPanel>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Card 3: CSC Execution Panel -->
-                    <Border Style="{StaticResource CardBorderStyle}">
-                        <StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                <TextBlock Text="⚙️" FontSize="14" Margin="0,0,8,0" />
-                                <TextBlock Text="CSC EXECUTION PANEL (SAMSUNG RIL/IPC)" FontSize="13" FontWeight="Bold" Foreground="{StaticResource AccentCyan}" />
-                            </StackPanel>
-
-                            <!-- Method Selector -->
-                            <TextBlock Text="اختيار طريقة العمل (Workflow Method):" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="0,0,0,6" />
-                            <Border Background="#161B28" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,0,0,12">
+                <!-- TAB 1: DEVICE TELEMETRY -->
+                <TabItem Header="📱 Telemetry">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="0,6,4,0">
+                            <!-- Card 1: Core Telemetry Grid -->
+                            <Border Style="{StaticResource CardBorderStyle}">
                                 <StackPanel>
-                                    <RadioButton GroupName="MethodGroup" IsChecked="{Binding IsMethod1Selected}" Margin="0,0,0,8">
-                                        <StackPanel>
-                                            <TextBlock Text="طريقة 1: اتصال مباشر (Direct AT Bridge - csc 15.txt)" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" />
-                                            <TextBlock Text="تنفيذ فوري مباشر عند توفر قنوات RIL وبورت 2600" FontSize="11" Foreground="{StaticResource TextSecondary}" />
+                                    <Grid Margin="0,0,0,10">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Text="📱" FontSize="14" Margin="0,0,8,0" />
+                                            <TextBlock Text="DEVICE TELEMETRY &amp; HARDWARE IDENTIFIERS" FontSize="13" FontWeight="Bold" Foreground="{StaticResource AccentCyan}" />
                                         </StackPanel>
-                                    </RadioButton>
-                                    <RadioButton GroupName="MethodGroup" IsChecked="{Binding IsMethod2Selected}">
-                                        <StackPanel>
-                                            <TextBlock Text="طريقة 2: مصعد الصلاحيات وكسر الحماية (Exploit &amp; R2 - 33.txt) [مُفعّلة]" FontWeight="SemiBold" Foreground="{StaticResource AccentCyan}" />
-                                            <TextBlock Text="تثبيت SRV4، استغلال WallpaperExploit (AASA)، نشر R2 وتهيئة قنوات AT R2" FontSize="11" Foreground="{StaticResource TextSecondary}" />
-                                        </StackPanel>
-                                    </RadioButton>
+                                        <Button Content="🔄 تحديث (Read Info)" Command="{Binding ReadInfoCommand}" Style="{StaticResource ModernDarkButton}"
+                                                HorizontalAlignment="Right" Padding="8,3" FontSize="11" Height="26" />
+                                    </Grid>
+
+                                    <Grid Margin="0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="130" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="25" />
+                                            <RowDefinition Height="25" />
+                                            <RowDefinition Height="25" />
+                                            <RowDefinition Height="25" />
+                                            <RowDefinition Height="25" />
+                                            <RowDefinition Height="25" />
+                                            <RowDefinition Height="25" />
+                                            <RowDefinition Height="25" />
+                                            <RowDefinition Height="25" />
+                                            <RowDefinition Height="25" />
+                                        </Grid.RowDefinitions>
+
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Model:" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Model}" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center" />
+
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Serial Number:" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Serial}" FontWeight="SemiBold" Foreground="{StaticResource AccentCyan}" VerticalAlignment="Center" />
+
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="IMEI (Parcel/Modem):" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Imei}" FontWeight="Bold" Foreground="{StaticResource AccentGreen}" VerticalAlignment="Center" />
+
+                                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Current CSC:" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding CurrentCsc}" FontWeight="Bold" Foreground="{StaticResource AccentOrange}" VerticalAlignment="Center" />
+
+                                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Product Code:" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding ProductCode}" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center" />
+
+                                        <TextBlock Grid.Row="5" Grid.Column="0" Text="Android Version:" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding AndroidVersion, StringFormat='Android {0}'}" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center" />
+
+                                        <TextBlock Grid.Row="6" Grid.Column="0" Text="Build Number:" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding BuildNumber}" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center" />
+
+                                        <TextBlock Grid.Row="7" Grid.Column="0" Text="Baseband (CP):" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding BasebandVersion}" Foreground="{StaticResource AccentCyan}" VerticalAlignment="Center" />
+
+                                        <TextBlock Grid.Row="8" Grid.Column="0" Text="IMSI (CIMI):" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding Imsi}" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center" />
+
+                                        <TextBlock Grid.Row="9" Grid.Column="0" Text="Hardware Lock:" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Row="9" Grid.Column="1" Text="{Binding HardwareLock}" FontWeight="Bold" Foreground="{StaticResource AccentGreen}" VerticalAlignment="Center" />
+                                    </Grid>
                                 </StackPanel>
                             </Border>
 
-                            <!-- Method 2 Artifacts Path -->
-                            <TextBlock Text="مسار ملفات الأوامر رقم 2 (Folder 2 Path):" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="0,0,0,4" />
-                            <TextBox Text="{Binding ArtifactsDirectory, UpdateSourceTrigger=PropertyChanged}"
-                                     Height="32" Background="#161B28" Foreground="{StaticResource AccentCyan}"
-                                     BorderBrush="{StaticResource BorderSubtle}" Padding="8,4" VerticalContentAlignment="Center"
-                                     FontSize="11" FontFamily="Consolas" Margin="0,0,0,12" />
-
-                            <TextBlock Text="Target Sales Code (CSC):" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="0,0,0,4" />
-                            <ComboBox ItemsSource="{Binding AvailableCscs}" SelectedItem="{Binding SelectedCsc}"
-                                      IsEditable="True" Height="36" Background="#161B28" Foreground="{StaticResource TextPrimary}"
-                                      BorderBrush="{StaticResource BorderSubtle}" Margin="0,0,0,12" FontSize="13" VerticalContentAlignment="Center" />
-
-                            <CheckBox IsChecked="{Binding UseEncryptedSession}" Margin="0,0,0,16" VerticalContentAlignment="Center">
+                            <!-- Card 2: Security & Channel Status Badges -->
+                            <Border Style="{StaticResource CardBorderStyle}">
                                 <StackPanel>
-                                    <TextBlock Text="تفعيل تشفير جلسة AT (Xorshift32 Stream Cipher)" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" />
-                                    <TextBlock Text="وضع إرسال Hex صافي مطابق لـ 33.txt و csc 15.txt عند إلغاء التحديد" FontSize="11" Foreground="{StaticResource TextSecondary}" />
+                                    <TextBlock Text="SECURITY &amp; SYSTEM STATUS BADGES" FontSize="13" FontWeight="Bold" Foreground="{StaticResource AccentCyan}" Margin="0,0,0,10" />
+                                    <WrapPanel Orientation="Horizontal">
+                                        <Border Background="#1E2333" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="5" Padding="8,5" Margin="0,0,6,6">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="SELinux: " Foreground="{StaticResource TextSecondary}" FontSize="11" />
+                                                <TextBlock Text="{Binding SelinuxStatus}" FontWeight="Bold" Foreground="{StaticResource AccentGreen}" FontSize="11" />
+                                            </StackPanel>
+                                        </Border>
+                                        <Border Background="#1E2333" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="5" Padding="8,5" Margin="0,0,6,6">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="RSU App: " Foreground="{StaticResource TextSecondary}" FontSize="11" />
+                                                <TextBlock Text="{Binding RsuAppStatus}" FontWeight="Bold" Foreground="{StaticResource AccentCyan}" FontSize="11" />
+                                            </StackPanel>
+                                        </Border>
+                                        <Border Background="#1E2333" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="5" Padding="8,5" Margin="0,0,6,6">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="Port 2600: " Foreground="{StaticResource TextSecondary}" FontSize="11" />
+                                                <TextBlock Text="{Binding Port2600Status}" FontWeight="Bold" Foreground="{StaticResource AccentGreen}" FontSize="11" />
+                                            </StackPanel>
+                                        </Border>
+                                        <Border Background="#1E2333" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="5" Padding="8,5" Margin="0,0,6,6">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="AT Channel: " Foreground="{StaticResource TextSecondary}" FontSize="11" />
+                                                <TextBlock Text="{Binding AtChannelStatus}" FontWeight="Bold" Foreground="{StaticResource AccentCyan}" FontSize="11" />
+                                            </StackPanel>
+                                        </Border>
+                                        <Border Background="#1E2333" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="5" Padding="8,5" Margin="0,0,6,6">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="SIM State: " Foreground="{StaticResource TextSecondary}" FontSize="11" />
+                                                <TextBlock Text="{Binding SimCardStatus}" FontWeight="Bold" Foreground="{StaticResource AccentOrange}" FontSize="11" />
+                                            </StackPanel>
+                                        </Border>
+                                        <Border Background="#1E2333" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="5" Padding="8,5" Margin="0,0,6,6">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="Network Lock: " Foreground="{StaticResource TextSecondary}" FontSize="11" />
+                                                <TextBlock Text="{Binding NetworkLockStatus}" FontWeight="Bold" Foreground="{StaticResource AccentGreen}" FontSize="11" />
+                                            </StackPanel>
+                                        </Border>
+                                    </WrapPanel>
                                 </StackPanel>
-                            </CheckBox>
+                            </Border>
 
-                            <Grid Margin="0,0,0,10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="10" />
-                                    <ColumnDefinition Width="1.5*" />
-                                </Grid.ColumnDefinitions>
-
-                                <Button Grid.Column="0" Command="{Binding ReadInfoCommand}" Style="{StaticResource ModernDarkButton}" Height="42">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="🔍 " />
-                                        <TextBlock Text="فحص (Read Info)" />
-                                    </StackPanel>
-                                </Button>
-
-                                <Button Grid.Column="2" Command="{Binding ChangeCscCommand}" Style="{StaticResource AccentActionButton}" Height="42">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="🚀 " />
-                                        <TextBlock Text="تنفيذ الأوامر (Run Workflow)" />
-                                    </StackPanel>
-                                </Button>
-                            </Grid>
-
-                            <!-- Direct Method 2 Trigger Button -->
-                            <Button Command="{Binding ExecuteMethod2Command}" Style="{StaticResource ModernDarkButton}" Height="36" Margin="0,0,0,10" BorderBrush="{StaticResource AccentCyan}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="⚡ " Foreground="{StaticResource AccentCyan}" />
-                                    <TextBlock Text="تنفيذ مباشر للأوامر رقم 2 (Execute Method 2 - 33.txt)" FontWeight="SemiBold" Foreground="{StaticResource AccentCyan}" />
+                            <!-- Card 3: Raw DEVCONINFO Output -->
+                            <Border Style="{StaticResource CardBorderStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="SAMSUNG +DEVCONINFO STRING (Direct NVRAM)" FontSize="12" FontWeight="Bold" Foreground="{StaticResource AccentCyan}" Margin="0,0,0,6" />
+                                    <TextBox Text="{Binding RawDevConInfo, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap"
+                                             Background="#111624" Foreground="{StaticResource TextMuted}" BorderBrush="{StaticResource BorderSubtle}"
+                                             Padding="8" FontSize="11" FontFamily="Consolas" MaxHeight="80" VerticalScrollBarVisibility="Auto" />
                                 </StackPanel>
-                            </Button>
-
-                            <!-- Progress Bar -->
-                            <ProgressBar Value="{Binding ProgressValue}" Maximum="100" Height="8"
-                                         Foreground="{StaticResource AccentCyan}" Background="#111624"
-                                         BorderBrush="{StaticResource BorderSubtle}" Margin="0,4,0,4" />
+                            </Border>
                         </StackPanel>
-                    </Border>
-                </StackPanel>
-            </ScrollViewer>
+                    </ScrollViewer>
+                </TabItem>
 
-            <!-- Right Column: Live Monospace Forensic Console -->
+                <!-- TAB 2: CSC SWITCHING -->
+                <TabItem Header="🌍 Samsung CSC">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="0,6,4,0">
+                            <Border Style="{StaticResource CardBorderStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="SAMSUNG CSC REGION SWITCHER" FontSize="13" FontWeight="Bold" Foreground="{StaticResource AccentCyan}" Margin="0,0,0,12" />
+
+                                    <!-- Method Selector -->
+                                    <TextBlock Text="طريقة العمل (Execution Method):" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="0,0,0,6" />
+                                    <Border Background="#161B28" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,0,0,12">
+                                        <StackPanel>
+                                            <RadioButton GroupName="MethodGroup" IsChecked="{Binding IsMethod1Selected}" Margin="0,0,0,8">
+                                                <StackPanel>
+                                                    <TextBlock Text="طريقة 1: اتصال مباشر (Direct AT Bridge - csc 15.txt)" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" />
+                                                    <TextBlock Text="تنفيذ فوري مباشر عبر قنوات RIL وبورت 2600" FontSize="11" Foreground="{StaticResource TextSecondary}" />
+                                                </StackPanel>
+                                            </RadioButton>
+                                            <RadioButton GroupName="MethodGroup" IsChecked="{Binding IsMethod2Selected}">
+                                                <StackPanel>
+                                                    <TextBlock Text="طريقة 2: مصعد الصلاحيات وكسر الحماية (Exploit &amp; R2 - 33.txt) [مُفعّلة]" FontWeight="SemiBold" Foreground="{StaticResource AccentCyan}" />
+                                                    <TextBlock Text="تثبيت SRV4، استغلال WallpaperExploit (AASA)، ونشر R2" FontSize="11" Foreground="{StaticResource TextSecondary}" />
+                                                </StackPanel>
+                                            </RadioButton>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- Method 2 Artifacts Path -->
+                                    <TextBlock Text="مسار ملفات الأوامر رقم 2 (Folder 2 Path):" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="0,0,0,4" />
+                                    <TextBox Text="{Binding ArtifactsDirectory, UpdateSourceTrigger=PropertyChanged}"
+                                             Height="32" Background="#161B28" Foreground="{StaticResource AccentCyan}"
+                                             BorderBrush="{StaticResource BorderSubtle}" Padding="8,4" VerticalContentAlignment="Center"
+                                             FontSize="11" FontFamily="Consolas" Margin="0,0,0,12" />
+
+                                    <TextBlock Text="Target Sales Code (CSC):" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="0,0,0,4" />
+                                    <ComboBox ItemsSource="{Binding AvailableCscs}" SelectedItem="{Binding SelectedCsc}"
+                                              IsEditable="True" Height="36" Background="#161B28" Foreground="{StaticResource TextPrimary}"
+                                              BorderBrush="{StaticResource BorderSubtle}" Margin="0,0,0,12" FontSize="13" VerticalContentAlignment="Center" />
+
+                                    <CheckBox IsChecked="{Binding UseEncryptedSession}" Margin="0,0,0,14" VerticalContentAlignment="Center">
+                                        <StackPanel>
+                                            <TextBlock Text="تفعيل تشفير جلسة AT (Xorshift32 Stream Cipher)" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" />
+                                            <TextBlock Text="وضع إرسال صافي مطابق لـ 33.txt و csc 15.txt عند إلغاء التحديد" FontSize="11" Foreground="{StaticResource TextSecondary}" />
+                                        </StackPanel>
+                                    </CheckBox>
+
+                                    <Grid Margin="0,0,0,10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="10" />
+                                            <ColumnDefinition Width="1.5*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <Button Grid.Column="0" Command="{Binding ReadInfoCommand}" Style="{StaticResource ModernDarkButton}" Height="40">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="🔍 " />
+                                                <TextBlock Text="فحص (Read Info)" />
+                                            </StackPanel>
+                                        </Button>
+
+                                        <Button Grid.Column="2" Command="{Binding ChangeCscCommand}" Style="{StaticResource AccentActionButton}" Height="40">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="🚀 " />
+                                                <TextBlock Text="تغيير CSC (Run Workflow)" />
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+
+                                    <Button Command="{Binding ExecuteMethod2Command}" Style="{StaticResource ModernDarkButton}" Height="34" BorderBrush="{StaticResource AccentCyan}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="⚡ " Foreground="{StaticResource AccentCyan}" />
+                                            <TextBlock Text="تنفيذ مباشر للأوامر رقم 2 (Execute Method 2 - 33.txt)" FontWeight="SemiBold" Foreground="{StaticResource AccentCyan}" />
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- TAB 3: SIM & NETWORK LOCKS -->
+                <TabItem Header="🔓 SIM Locks">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="0,6,4,0">
+                            <Border Style="{StaticResource CardBorderStyle}">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,12">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Text="🔓" FontSize="14" Margin="0,0,8,0" />
+                                            <TextBlock Text="3GPP SIM &amp; NETWORK PERSONALIZATION LOCKS" FontSize="13" FontWeight="Bold" Foreground="{StaticResource AccentCyan}" />
+                                        </StackPanel>
+                                        <Button Content="🔄 فحص الأقفال (Query Locks)" Command="{Binding QuerySimLocksCommand}" Style="{StaticResource ModernDarkButton}"
+                                                HorizontalAlignment="Right" Padding="10,3" FontSize="11" Height="28" />
+                                    </Grid>
+
+                                    <Border Background="#161B28" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,0,12">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding SimLockSummary}" FontWeight="Bold" Foreground="{StaticResource AccentGreen}" FontSize="13" Margin="0,0,0,8" />
+
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="200" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="26" />
+                                                    <RowDefinition Height="26" />
+                                                    <RowDefinition Height="26" />
+                                                    <RowDefinition Height="26" />
+                                                    <RowDefinition Height="26" />
+                                                    <RowDefinition Height="26" />
+                                                </Grid.RowDefinitions>
+
+                                                <TextBlock Grid.Row="0" Grid.Column="0" Text="SIM Ready State (CPIN):" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding CpinState}" FontWeight="Bold" Foreground="{StaticResource AccentCyan}" VerticalAlignment="Center" />
+
+                                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Network Lock (CLCK:PN):" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding NetworkLockPn}" FontWeight="Bold" Foreground="{StaticResource AccentGreen}" VerticalAlignment="Center" />
+
+                                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Network Subset (CLCK:PU):" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding NetworkSubsetLockPu}" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center" />
+
+                                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Service Provider (CLCK:PP):" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding ServiceProviderLockPp}" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center" />
+
+                                                <TextBlock Grid.Row="4" Grid.Column="0" Text="Corporate Lock (CLCK:PC):" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding CorporateLockPc}" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center" />
+
+                                                <TextBlock Grid.Row="5" Grid.Column="0" Text="SIM PIN Lock (CLCK:SC):" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding SimPinLockSc}" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center" />
+                                            </Grid>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Button Command="{Binding QuerySimLocksCommand}" Style="{StaticResource AccentActionButton}" Height="38">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="🔍 " />
+                                            <TextBlock Text="إعادة فحص كافة أقفال الشبكة (Audit All Locks)" />
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- TAB 4: SPRINT / BOOST & CARRIER RELOCK (/boost) -->
+                <TabItem Header="⚡ Boost &amp; Relock">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="0,6,4,0">
+                            <!-- Sprint / Boost Unlock -->
+                            <Border Style="{StaticResource CardBorderStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="⚡ SPRINT &amp; BOOST MOBILE UNLOCK (/boost)" FontSize="13" FontWeight="Bold" Foreground="{StaticResource AccentCyan}" Margin="0,0,0,6" />
+                                    <TextBlock Text="ينفذ سلسلة فك القفل لسبرينت وبوست: AT+UNLOCKSPR=OLD وتصفير AT+SIMLOCKU=0,0,0 وحذف خدمات com.sec.omadmspr وإعادة إقلاع الراديو."
+                                               FontSize="11" Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap" Margin="0,0,0,12" />
+
+                                    <Button Command="{Binding BoostUnlockCommand}" Style="{StaticResource AccentActionButton}" Height="42" Margin="0,0,0,4">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="⚡ " FontSize="16" />
+                                            <TextBlock Text="فك قفل سبرينت / بوست فوري (Execute Boost Unlock)" FontWeight="Bold" FontSize="13" />
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Carrier Relock Management -->
+                            <Border Style="{StaticResource CardBorderStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="🔒 CARRIER RELOCK &amp; MCCREQ BCD GENERATOR (SRELOCK1 &amp; SETSPR)" FontSize="13" FontWeight="Bold" Foreground="{StaticResource AccentCyan}" Margin="0,0,0,6" />
+                                    <TextBlock Text="توليد حزمة BCD لـ 1688 مشغل حول العالم وحقن أمر إعادة القفل على شبكة محددة."
+                                               FontSize="11" Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap" Margin="0,0,0,10" />
+
+                                    <!-- Search Box -->
+                                    <TextBlock Text="بحث في قاعدة بيانات المشغلين (Search Country / Operator):" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="0,0,0,4" />
+                                    <TextBox Text="{Binding MccMncSearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                                             Height="32" Background="#161B28" Foreground="{StaticResource TextPrimary}"
+                                             BorderBrush="{StaticResource BorderSubtle}" Padding="8,4" VerticalContentAlignment="Center" Margin="0,0,0,8" />
+
+                                    <!-- Operators ComboBox -->
+                                    <TextBlock Text="اختيار المشغل (Select Target Carrier):" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="0,0,0,4" />
+                                    <ComboBox ItemsSource="{Binding AvailableCarriers}" SelectedItem="{Binding SelectedCarrier}"
+                                              DisplayMemberPath="DisplayName" Height="36" Background="#161B28" Foreground="{StaticResource TextPrimary}"
+                                              BorderBrush="{StaticResource BorderSubtle}" Margin="0,0,0,12" FontSize="12" VerticalContentAlignment="Center" />
+
+                                    <!-- Custom MCC / MNC inputs -->
+                                    <Grid Margin="0,0,0,10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="8" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="8" />
+                                            <ColumnDefinition Width="1.5*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="MCC Code:" Foreground="{StaticResource TextSecondary}" FontSize="11" Margin="0,0,0,2" />
+                                            <TextBox Text="{Binding CustomMcc, UpdateSourceTrigger=PropertyChanged}" Height="30"
+                                                     Background="#161B28" Foreground="{StaticResource AccentCyan}" BorderBrush="{StaticResource BorderSubtle}"
+                                                     Padding="6,2" VerticalContentAlignment="Center" FontFamily="Consolas" />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="MNC Code:" Foreground="{StaticResource TextSecondary}" FontSize="11" Margin="0,0,0,2" />
+                                            <TextBox Text="{Binding CustomMnc, UpdateSourceTrigger=PropertyChanged}" Height="30"
+                                                     Background="#161B28" Foreground="{StaticResource AccentCyan}" BorderBrush="{StaticResource BorderSubtle}"
+                                                     Padding="6,2" VerticalContentAlignment="Center" FontFamily="Consolas" />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="4">
+                                            <TextBlock Text="Generated BCD Payload:" Foreground="{StaticResource TextSecondary}" FontSize="11" Margin="0,0,0,2" />
+                                            <TextBox Text="{Binding CalculatedBcdPayload, Mode=OneWay}" Height="30"
+                                                     Background="#111624" Foreground="{StaticResource AccentGreen}" BorderBrush="{StaticResource BorderSubtle}"
+                                                     Padding="6,2" VerticalContentAlignment="Center" FontFamily="Consolas" FontWeight="Bold" IsReadOnly="True" />
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <Button Command="{Binding CarrierRelockCommand}" Style="{StaticResource ModernDarkButton}" Height="38" BorderBrush="{StaticResource AccentOrange}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="🔒 " />
+                                            <TextBlock Text="تطبيق قفل الشبكة المحددة (Apply Carrier Relock)" FontWeight="SemiBold" Foreground="{StaticResource AccentOrange}" />
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- TAB 5: RADIO & POWER -->
+                <TabItem Header="📡 Radio &amp; Power">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="0,6,4,0">
+                            <!-- Radio Controls -->
+                            <Border Style="{StaticResource CardBorderStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="RADIO &amp; BASEBAND MODEM CONTROLS" FontSize="13" FontWeight="Bold" Foreground="{StaticResource AccentCyan}" Margin="0,0,0,10" />
+
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="8" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Button Grid.Column="0" Command="{Binding RadioRebootCommand}" Style="{StaticResource ModernDarkButton}" Height="40">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="🔄 " />
+                                                <TextBlock Text="إعادة إقلاع الراديو (CFUN=1,1)" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Grid.Column="2" Command="{Binding PhoneRebootCommand}" Style="{StaticResource ModernDarkButton}" Height="40">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="📱 " />
+                                                <TextBlock Text="إعادة تشغيل الهاتف (SWRESET)" />
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+
+                                    <Grid Margin="0,0,0,12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="8" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Button Grid.Column="0" Command="{Binding RadioOffCommand}" Style="{StaticResource ModernDarkButton}" Height="36">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="✈️ " />
+                                                <TextBlock Text="إيقاف الراديو (CFUN=0)" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Grid.Column="2" Command="{Binding RadioOnCommand}" Style="{StaticResource ModernDarkButton}" Height="36">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="📶 " />
+                                                <TextBlock Text="تشغيل الراديو (CFUN=1)" />
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+
+                                    <Button Command="{Binding RadioFactoryResetCommand}" Style="{StaticResource ModernDarkButton}" Height="38" BorderBrush="{StaticResource AccentOrange}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="⚠️ " />
+                                            <TextBlock Text="إعادة ضبط مصنع ذاكرة المودم (AT+FACTORST=0,0)" Foreground="{StaticResource AccentOrange}" FontWeight="SemiBold" />
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Security Seed Challenge -->
+                            <Border Style="{StaticResource CardBorderStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="MODEM SECURITY CHALLENGE &amp; SEED (AKSEEDNO)" FontSize="13" FontWeight="Bold" Foreground="{StaticResource AccentCyan}" Margin="0,0,0,6" />
+                                    <TextBlock Text="طلب بذرة التحدي التشفيري من مودم سامسونج (AT+AKSEEDNO=1,0) للمصادقة المتقدمة."
+                                               FontSize="11" Foreground="{StaticResource TextSecondary}" Margin="0,0,0,10" />
+
+                                    <Grid Margin="0,0,0,10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="8" />
+                                            <ColumnDefinition Width="100" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBox Grid.Column="0" Text="{Binding SecuritySeed, Mode=OneWay}" Height="34"
+                                                 Background="#111624" Foreground="{StaticResource AccentGreen}" BorderBrush="{StaticResource BorderSubtle}"
+                                                 Padding="8,4" VerticalContentAlignment="Center" FontFamily="Consolas" IsReadOnly="True" />
+
+                                        <Button Grid.Column="2" Command="{Binding QuerySecuritySeedCommand}" Style="{StaticResource ModernDarkButton}" Height="34" Content="طلب البذرة" />
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- TAB 6: INTERACTIVE AT TERMINAL -->
+                <TabItem Header="💻 AT Terminal">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="0,6,4,0">
+                            <Border Style="{StaticResource CardBorderStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="INTERACTIVE AT &amp; IPC DIRECT TERMINAL" FontSize="13" FontWeight="Bold" Foreground="{StaticResource AccentCyan}" Margin="0,0,0,6" />
+                                    <TextBlock Text="أرسل أي أمر AT نصي أو حزمة HEX مباشرة للمودم واعرض الرد الحي في الطرفية."
+                                               FontSize="11" Foreground="{StaticResource TextSecondary}" Margin="0,0,0,10" />
+
+                                    <!-- Quick Command Buttons -->
+                                    <TextBlock Text="أوامر سريعة جاهزة (Quick Presets):" Foreground="{StaticResource TextSecondary}" FontSize="11" Margin="0,0,0,6" />
+                                    <WrapPanel Margin="0,0,0,12">
+                                        <Button Content="AT" Command="{Binding QuickAtCommand}" CommandParameter="AT" Style="{StaticResource ModernDarkButton}" Padding="8,4" Margin="0,0,6,6" FontSize="11" />
+                                        <Button Content="AT+DEVCONINFO" Command="{Binding QuickAtCommand}" CommandParameter="AT+DEVCONINFO" Style="{StaticResource ModernDarkButton}" Padding="8,4" Margin="0,0,6,6" FontSize="11" />
+                                        <Button Content="AT+CPIN?" Command="{Binding QuickAtCommand}" CommandParameter="AT+CPIN?" Style="{StaticResource ModernDarkButton}" Padding="8,4" Margin="0,0,6,6" FontSize="11" />
+                                        <Button Content="AT+CLCK=&quot;PN&quot;,2" Command="{Binding QuickAtCommand}" CommandParameter="AT+CLCK=&quot;PN&quot;,2" Style="{StaticResource ModernDarkButton}" Padding="8,4" Margin="0,0,6,6" FontSize="11" />
+                                        <Button Content="AT+VERSNAME=1,9,0" Command="{Binding QuickAtCommand}" CommandParameter="AT+VERSNAME=1,9,0" Style="{StaticResource ModernDarkButton}" Padding="8,4" Margin="0,0,6,6" FontSize="11" />
+                                        <Button Content="AT+CIMI" Command="{Binding QuickAtCommand}" CommandParameter="AT+CIMI" Style="{StaticResource ModernDarkButton}" Padding="8,4" Margin="0,0,6,6" FontSize="11" />
+                                        <Button Content="AT+BATTEST=1,0" Command="{Binding QuickAtCommand}" CommandParameter="AT+BATTEST=1,0" Style="{StaticResource ModernDarkButton}" Padding="8,4" Margin="0,0,6,6" FontSize="11" />
+                                        <Button Content="AT+CFUN=1,1" Command="{Binding QuickAtCommand}" CommandParameter="AT+CFUN=1,1" Style="{StaticResource ModernDarkButton}" Padding="8,4" Margin="0,0,6,6" FontSize="11" />
+                                    </WrapPanel>
+
+                                    <!-- Command Input Box -->
+                                    <TextBlock Text="أمر AT أو بايتات Hex (Command Input):" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="0,0,0,4" />
+                                    <Grid Margin="0,0,0,10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="8" />
+                                            <ColumnDefinition Width="90" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBox Grid.Column="0" Text="{Binding TerminalInput, UpdateSourceTrigger=PropertyChanged}" Height="36"
+                                                 Background="#161B28" Foreground="{StaticResource AccentCyan}" BorderBrush="{StaticResource BorderSubtle}"
+                                                 Padding="8,4" VerticalContentAlignment="Center" FontFamily="Consolas" FontSize="12" />
+
+                                        <Button Grid.Column="2" Command="{Binding SendTerminalCommand}" Style="{StaticResource AccentActionButton}" Height="36" Content="إرسال" />
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+            </TabControl>
+
+            <!-- Right Column: Live Monospace Forensic Console (Universal across all tabs) -->
             <Border Grid.Column="2" Background="{StaticResource BgConsole}" BorderBrush="{StaticResource BorderSubtle}"
                     BorderThickness="1" CornerRadius="8" Padding="14">
                 <Grid>
@@ -290,11 +591,12 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
+                    <!-- Console Header -->
                     <Grid Grid.Row="0" Margin="0,0,0,10">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <TextBlock Text="💻" FontSize="14" Margin="0,0,8,0" />
                             <TextBlock Text="LIVE FORENSIC CONSOLE" FontSize="13" FontWeight="Bold" Foreground="{StaticResource AccentCyan}" />
-                            <TextBlock Text=" (csc 15.txt matching trace)" FontSize="11" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" />
+                            <TextBlock Text=" (Chronological Real-Time Trace)" FontSize="11" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" />
                         </StackPanel>
 
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
@@ -331,14 +633,22 @@
 
         <!-- Bottom Status Bar -->
         <Border Grid.Row="2" Background="{StaticResource BgCardPrimary}" BorderBrush="{StaticResource BorderSubtle}"
-                BorderThickness="1" CornerRadius="6" Padding="12,6" Margin="0,10,0,0">
+                BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,10,0,0">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="200" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
+
                 <TextBlock Grid.Column="0" Text="{Binding StatusText}" FontSize="11" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
-                <TextBlock Grid.Column="1" Text="GsmTools.Desktop v2.0 | .NET 8 WPF" FontSize="11" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" />
+
+                <!-- Progress Bar -->
+                <ProgressBar Grid.Column="1" Value="{Binding ProgressValue}" Maximum="100" Height="8"
+                             Foreground="{StaticResource AccentCyan}" Background="#111624"
+                             BorderBrush="{StaticResource BorderSubtle}" Margin="10,0,10,0" VerticalAlignment="Center" />
+
+                <TextBlock Grid.Column="2" Text="GsmTools.Desktop v3.0 Pro | .NET 8 WPF" FontSize="11" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" />
             </Grid>
         </Border>
     </Grid>

@@ -20,5 +20,9 @@ public record DeviceInfo(
     string RetailAgentVersion,
     string ActiveAtChannel = "NONE",
     string SimCardStatus = "Unknown",
-    string NetworkLockStatus = "Unknown"
+    string NetworkLockStatus = "Unknown",
+    string BasebandVersion = "Unknown",
+    string Imsi = "Unknown",
+    string HardwareLock = "NONE",
+    string RawDevConInfo = ""
 );
