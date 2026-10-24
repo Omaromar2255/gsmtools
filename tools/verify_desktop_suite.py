@@ -59,10 +59,15 @@ def test_c_source_integrity():
         "query_akseedno",
         "execute_samsung_csc_change",
         "query_sim_locks",
-        "transform_buffer"
+        "transform_buffer",
+        "open_tcp_relay"
     ]
     for fn in required_funcs:
         assert fn in c_code, f"Function {fn} missing in at_bridge.c"
+
+    # Verify /boost support in at_bridge.c
+    assert "/boost" in c_code, "Command /boost missing in at_bridge.c"
+    assert "CH_TCP_RELAY_2600" in c_code, "CH_TCP_RELAY_2600 channel mode missing in at_bridge.c"
 
     print("  -> C source and headers verified: 100% OK")
 
@@ -84,7 +89,22 @@ def test_csharp_files_integrity():
         open_b = code.count('{')
         close_b = code.count('}')
         assert open_b == close_b, f"Brace mismatch in {path}: {open_b} vs {close_b}"
-    print("  -> All C# files have balanced braces: 100% OK")
+
+    # Verify MainWindowViewModel event wiring
+    vm_path = os.path.join("GsmTools.Desktop", "ViewModels", "MainWindowViewModel.cs")
+    with open(vm_path, "r", encoding="utf-8") as f:
+        vm_code = f.read()
+    assert "_cscWorkflow.OnLog += HandleWorkflowLog;" in vm_code, "Workflow log subscription broken in MainWindowViewModel"
+    assert "HandleWorkflowLog" in vm_code, "HandleWorkflowLog handler missing in MainWindowViewModel"
+
+    # Verify PersistentAtBridgeSession command routing
+    session_path = os.path.join("GsmTools.Desktop", "Core", "PersistentAtBridgeSession.cs")
+    with open(session_path, "r", encoding="utf-8") as f:
+        sess_code = f.read()
+    assert "string.Equals(trimmed, \"STATUS\"" in sess_code, "Bridge command preservation missing in PersistentAtBridgeSession"
+    assert "/BOOST" in sess_code, "/boost handling missing in PersistentAtBridgeSession"
+
+    print("  -> All C# files have balanced braces & verified event wiring: 100% OK")
 
 def test_xorshift32_compatibility():
     print("[3/6] Testing Xorshift32 Stream Cipher compatibility...")

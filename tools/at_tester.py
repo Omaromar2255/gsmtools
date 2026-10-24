@@ -100,7 +100,7 @@ class AtAdbClient:
 
     def send_cmd(self, cmd: str) -> str:
         clean_cmd = cmd.strip()
-        script = f"echo '{clean_cmd}\r\n' > {self.node}; head -n 10 {self.node} 2>/dev/null"
+        script = f"if [ -x /data/local/tmp/AT ]; then /data/local/tmp/AT -a \"{clean_cmd}\" 2>/dev/null; elif [ -w {self.node} ]; then echo -e '{clean_cmd}\\r' > {self.node}; head -n 10 {self.node} 2>/dev/null; else echo 'AT_MODEM_UNAVAILABLE'; fi"
         return self._run_adb(["shell", script])
 
 
@@ -158,6 +158,13 @@ def run_diagnostics(client):
 
 def run_boost_unlock(client):
     print(f"\n{CYAN}=== Sprint / Boost Mobile Unlock Sequence (/boost) ==={RESET}")
+    if isinstance(client, AtAdbClient):
+        check = client._run_adb(["shell", "if [ -x /data/local/tmp/AT ]; then /data/local/tmp/AT /boost; else echo 'NO_AT'; fi"])
+        if "NO_AT" not in check:
+            print(f"<< {check}")
+            print(f"{GREEN}[+] Sprint / Boost Unlock completed via native /data/local/tmp/AT /boost.{RESET}")
+            return
+
     steps = [
         ("Unlock SPR Old", "AT+UNLOCKSPR=OLD"),
         ("Reset SimLock Parameters", "AT+SIMLOCKU=0,0,0"),
@@ -172,10 +179,16 @@ def run_boost_unlock(client):
 
 
 def run_carrier_relock(client, bcd_hex: str):
-    print(f"\n{CYAN}=== Carrier Relock via MCCREQ BCD: {bcd_hex} ==={RESET}")
-    # Using SETSPR / SRELOCK1 chain
-    print(f"{YELLOW}[*] Sending Relock command...{RESET}")
-    resp = client.send_cmd(f"AT+CFUN=1,1")
+    clean_bcd = bcd_hex.strip().upper()
+    print(f"\n{CYAN}=== Carrier Relock via MCCREQ BCD: {clean_bcd} ==={RESET}")
+    total_bytes = 4 + (len(clean_bcd) // 2)
+    srelock_frame = f"0601{total_bytes:04X}0000{clean_bcd}"
+    print(f"{YELLOW}[*] Dispatching SRELOCK1 Frame: {srelock_frame}{RESET}")
+    if isinstance(client, AtAdbClient):
+        cmd = f"if [ -x /data/local/tmp/AT ]; then /data/local/tmp/AT -r {clean_bcd}; else echo -e 'AT+CFUN=1,1\\r' > /dev/umts_atc0; fi"
+        resp = client._run_adb(["shell", cmd])
+    else:
+        resp = client.send_cmd(f"AT+CFUN=1,1")
     print(f"<< {resp}")
     print(f"{GREEN}[+] Relock request processed.{RESET}")
 

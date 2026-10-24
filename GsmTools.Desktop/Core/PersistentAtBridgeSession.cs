@@ -196,9 +196,46 @@ public class PersistentAtBridgeSession : IPersistentAtBridgeSession
         await _sessionLock.WaitAsync(cancellationToken);
         try
         {
-            string cmd = atCommand.StartsWith("AT:", StringComparison.OrdinalIgnoreCase)
-                ? atCommand.Trim()
-                : $"AT:{atCommand.Trim()}";
+            string trimmed = (atCommand ?? string.Empty).Trim();
+            string cmd;
+
+            if (trimmed.StartsWith("AT:", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("HEX:", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("BOOST", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("/BOOST", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("RELOCK:", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("RADIO:", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("CSC:", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("AUTH:", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("MODE:", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "STATUS", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "SCAN", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "HELP", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "LOCKS", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "SIMLOCK", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "DEVINFO", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "TELEMETRY", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "AKSEED", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "INFO", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "RECONNECT", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "EXIT", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(trimmed, "QUIT", StringComparison.OrdinalIgnoreCase))
+            {
+                cmd = trimmed;
+            }
+            else if (trimmed.StartsWith("AT", StringComparison.OrdinalIgnoreCase) ||
+                     trimmed.StartsWith("+", StringComparison.Ordinal) ||
+                     trimmed.StartsWith("$", StringComparison.Ordinal) ||
+                     trimmed.StartsWith("GETSPR", StringComparison.OrdinalIgnoreCase) ||
+                     trimmed.StartsWith("SETSPR", StringComparison.OrdinalIgnoreCase) ||
+                     trimmed.StartsWith("SRELOCK1", StringComparison.OrdinalIgnoreCase))
+            {
+                cmd = trimmed;
+            }
+            else
+            {
+                cmd = $"AT:{trimmed}";
+            }
 
             byte[] cmdBytes = Encoding.ASCII.GetBytes($"{cmd}\n");
             await _stream.WriteAsync(cmdBytes, cancellationToken);

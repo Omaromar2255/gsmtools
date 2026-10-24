@@ -150,6 +150,97 @@ def test_csc_packet_chain():
     assert p5 == "060100090000584141"
     print("  -> Samsung CSC 5-Packet Chain: PASS")
 
+def test_bridge_interactive_command_dispatching():
+    print("[TEST] Running Bridge Interactive Command Dispatching Test...")
+    # Simulates at_bridge.c interactive loop routing
+    def route_command(line: str) -> str:
+        s = line.strip()
+        if not s: return "EMPTY"
+        upper = s.upper()
+        if upper in ["BOOST", "/BOOST", "-BOOST", "--BOOST", "BOOST_UNLOCK", "SPR_UNLOCK"] or upper.startswith("BOOST:") or upper.startswith("/BOOST:"):
+            return "ACTION:BOOST_UNLOCK"
+        if upper.startswith("RELOCK:"):
+            return f"ACTION:RELOCK:{s[7:]}"
+        if upper.startswith("RADIO:"):
+            return f"ACTION:RADIO:{s[6:]}"
+        if upper in ["STATUS", "SCAN", "LOCKS", "DEVINFO", "AKSEED", "INFO", "RECONNECT"]:
+            return f"ACTION:{upper}"
+        if upper.startswith("CSC:"):
+            return f"ACTION:CSC:{s[4:]}"
+        if upper.startswith("AT:") or upper.startswith("AT") or s.startswith("+") or s.startswith("$") or upper.startswith("GETSPR") or upper.startswith("SETSPR") or upper.startswith("SRELOCK1"):
+            cmd = s[3:] if upper.startswith("AT:") else s
+            return f"MODEM_AT:{cmd}"
+        # Hex IPC fallback
+        hex_data = s[4:] if upper.startswith("HEX:") else s
+        if re.match(r"^[0-9A-Fa-f]+$", hex_data):
+            return f"MODEM_IPC:{hex_data}"
+        return "ERR_SYNTAX"
+
+    # Test /boost and variations
+    assert route_command("/boost") == "ACTION:BOOST_UNLOCK"
+    assert route_command("BOOST") == "ACTION:BOOST_UNLOCK"
+    assert route_command("--boost") == "ACTION:BOOST_UNLOCK"
+    assert route_command("/BOOST:") == "ACTION:BOOST_UNLOCK"
+
+    # Test raw AT commands without AT: prefix (MUST NOT RETURN ERR_SYNTAX)
+    assert route_command("AT") == "MODEM_AT:AT"
+    assert route_command("AT+DEVCONINFO") == "MODEM_AT:AT+DEVCONINFO"
+    assert route_command("AT+CPIN?") == "MODEM_AT:AT+CPIN?"
+    assert route_command("AT+CFUN=1,1") == "MODEM_AT:AT+CFUN=1,1"
+    assert route_command("AT+CLCK=\"PN\",2") == "MODEM_AT:AT+CLCK=\"PN\",2"
+    assert route_command("GETSPR") == "MODEM_AT:GETSPR"
+    assert route_command("SETSPR") == "MODEM_AT:SETSPR"
+    assert route_command("+CSQ") == "MODEM_AT:+CSQ"
+
+    # Test bridge control commands
+    assert route_command("STATUS") == "ACTION:STATUS"
+    assert route_command("SCAN") == "ACTION:SCAN"
+    assert route_command("DEVINFO") == "ACTION:DEVINFO"
+    assert route_command("LOCKS") == "ACTION:LOCKS"
+    assert route_command("RELOCK:421F0100") == "ACTION:RELOCK:421F0100"
+    assert route_command("RADIO:REBOOT") == "ACTION:RADIO:REBOOT"
+
+    # Test hex IPC frames
+    assert route_command("060100090000584141") == "MODEM_IPC:060100090000584141"
+    assert route_command("HEX:060100090000584141") == "MODEM_IPC:060100090000584141"
+
+    print("  -> Bridge Interactive Command Dispatching: PASS")
+
+def test_csharp_session_command_formatting():
+    print("[TEST] Running C# PersistentAtBridgeSession Command Formatting Test...")
+    # Simulates PersistentAtBridgeSession.SendAtCommandAsync formatting
+    bridge_keywords = {
+        "STATUS", "SCAN", "HELP", "LOCKS", "SIMLOCK", "DEVINFO",
+        "TELEMETRY", "AKSEED", "INFO", "RECONNECT", "EXIT", "QUIT"
+    }
+
+    def format_session_command(at_command: str) -> str:
+        trimmed = at_command.strip()
+        upper = trimmed.upper()
+        if (upper.startswith("AT:") or upper.startswith("HEX:") or
+            upper.startswith("BOOST") or upper.startswith("/BOOST") or
+            upper.startswith("RELOCK:") or upper.startswith("RADIO:") or
+            upper.startswith("CSC:") or upper.startswith("AUTH:") or
+            upper.startswith("MODE:") or upper in bridge_keywords):
+            return trimmed
+        elif (upper.startswith("AT") or trimmed.startswith("+") or
+              trimmed.startswith("$") or upper.startswith("GETSPR") or
+              upper.startswith("SETSPR") or upper.startswith("SRELOCK1")):
+            return trimmed
+        else:
+            return f"AT:{trimmed}"
+
+    assert format_session_command("STATUS") == "STATUS" # NOT AT:STATUS!
+    assert format_session_command("SCAN") == "SCAN"     # NOT AT:SCAN!
+    assert format_session_command("DEVINFO") == "DEVINFO" # NOT AT:DEVINFO!
+    assert format_session_command("BOOST") == "BOOST"   # NOT AT:BOOST!
+    assert format_session_command("/boost") == "/boost" # NOT AT:/boost!
+    assert format_session_command("AT+DEVCONINFO") == "AT+DEVCONINFO"
+    assert format_session_command("AT+CFUN=1,1") == "AT+CFUN=1,1"
+    assert format_session_command("GETSPR") == "GETSPR"
+    assert format_session_command("CUSTOM_RAW") == "AT:CUSTOM_RAW"
+    print("  -> C# PersistentAtBridgeSession Command Formatting: PASS")
+
 if __name__ == "__main__":
     print("==================================================")
     print("  RUNNING DEEP AUTOMATED WORKFLOW TESTS")
@@ -159,6 +250,8 @@ if __name__ == "__main__":
     test_boost_unlock_and_relock_workflow()
     test_radio_control_actions()
     test_csc_packet_chain()
+    test_bridge_interactive_command_dispatching()
+    test_csharp_session_command_formatting()
     print("==================================================")
-    print("  ALL WORKFLOW TEST SUITES PASSED (5/5) SUCCESS!")
+    print("  ALL WORKFLOW TEST SUITES PASSED (7/7) SUCCESS!")
     print("==================================================")

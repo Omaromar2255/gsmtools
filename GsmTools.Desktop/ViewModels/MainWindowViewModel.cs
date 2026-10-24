@@ -261,12 +261,12 @@ public class MainWindowViewModel : ViewModelBase
         _interactiveWorkflow = interactiveWorkflow ?? new InteractiveAtWorkflow(adbClient, atSession);
 
         // Bind Workflow Events
-        RegisterLogHandler(_cscWorkflow.OnLog);
-        RegisterLogHandler(_telemetryWorkflow.OnLog);
-        RegisterLogHandler(_simLockWorkflow.OnLog);
-        RegisterLogHandler(_boostWorkflow.OnLog);
-        RegisterLogHandler(_radioWorkflow.OnLog);
-        RegisterLogHandler(_interactiveWorkflow.OnLog);
+        _cscWorkflow.OnLog += HandleWorkflowLog;
+        _telemetryWorkflow.OnLog += HandleWorkflowLog;
+        _simLockWorkflow.OnLog += HandleWorkflowLog;
+        _boostWorkflow.OnLog += HandleWorkflowLog;
+        _radioWorkflow.OnLog += HandleWorkflowLog;
+        _interactiveWorkflow.OnLog += HandleWorkflowLog;
 
         _cscWorkflow.OnStepChanged += HandleStepProgress;
         _boostWorkflow.OnStepChanged += HandleStepProgress;
@@ -299,32 +299,39 @@ public class MainWindowViewModel : ViewModelBase
         LoadCarriers();
     }
 
-    private void RegisterLogHandler(Action<string>? eventHook)
+    private void HandleWorkflowLog(string msg)
     {
-        if (eventHook != null)
+        if (Application.Current?.Dispatcher != null && !Application.Current.Dispatcher.CheckAccess())
         {
-            eventHook += msg =>
-            {
-                Application.Current?.Dispatcher.Invoke(() =>
-                {
-                    LogItems.Add(ConsoleLogItem.FromRawString(msg));
-                });
-            };
+            Application.Current.Dispatcher.Invoke(() => LogItems.Add(ConsoleLogItem.FromRawString(msg)));
+        }
+        else
+        {
+            LogItems.Add(ConsoleLogItem.FromRawString(msg));
         }
     }
 
     private void HandleStepProgress(WorkflowStepProgress prog)
     {
-        Application.Current?.Dispatcher.Invoke(() =>
+        void Apply()
         {
             ProgressValue = prog.ProgressPercentage;
             StatusText = $"Step {prog.StepNumber}/{prog.TotalSteps}: {prog.StepName} - {prog.StatusMessage}";
-        });
+        }
+
+        if (Application.Current?.Dispatcher != null && !Application.Current.Dispatcher.CheckAccess())
+        {
+            Application.Current.Dispatcher.Invoke(Apply);
+        }
+        else
+        {
+            Apply();
+        }
     }
 
     private void UpdateDeviceFields(DeviceInfo info)
     {
-        Application.Current?.Dispatcher.Invoke(() =>
+        void Apply()
         {
             Model = info.Model;
             Serial = info.Serial;
@@ -347,7 +354,16 @@ public class MainWindowViewModel : ViewModelBase
             Imsi = info.Imsi;
             HardwareLock = info.HardwareLock;
             RawDevConInfo = info.RawDevConInfo;
-        });
+        }
+
+        if (Application.Current?.Dispatcher != null && !Application.Current.Dispatcher.CheckAccess())
+        {
+            Application.Current.Dispatcher.Invoke(Apply);
+        }
+        else
+        {
+            Apply();
+        }
     }
 
     private void LoadCarriers()

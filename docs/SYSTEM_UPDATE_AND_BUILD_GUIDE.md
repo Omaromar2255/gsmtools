@@ -80,29 +80,36 @@
 
 ### 2.2 منطق التنفيذ والبروتوكول الجديد في `at_bridge.c`
 في الملف [at_bridge.c](file:///c:/Users/Administrator/Documents/GitHub/gsmtools/at-bridge/jni/at_bridge.c):
-1. **دالة `execute_boost_unlock(verbose)`:**
-   - ترسل أمر `AT+UNLOCKSPR=OLD`.
-   - ترسل أمر `AT+SIMLOCKU=0,0,0`.
-   - تزيل تطبيقات قفل سبرينت (`com.sec.omadmspr`, `com.sec.android.AutoPreconfig`, `com.skatd.unlock`).
-   - تمسح كاش وسجلات الراديو (`logcat -b radio -c`).
-   - تعيد تشغيل الراديو `AT+CFUN=1,1`.
-   - تطبع `.OK_BOOST..\n` للتكامل التلقائي مع واجهة C#.
-2. **دالة `execute_carrier_relock(mcc_mnc_bcd_hex, verbose)`:**
+1. **دعم مباشر لأمر فك شبكات بوست وسبرينت (`/boost`):**
+   - يدعم `/boost`, `-b`, `--boost`, `boost`, و `BOOST:` سواء من سطر الأوامر الفردي (`AT /boost`) أو داخل الطرفية التفاعلية.
+   - ينفذ تلقائياً تسلسل فك القفل:
+     - إرسال `AT+UNLOCKSPR=OLD`.
+     - إرسال `AT+SIMLOCKU=0,0,0`.
+     - إزالة تطبيقات قفل سبرينت (`com.sec.omadmspr`, `com.sec.android.AutoPreconfig`, `com.skatd.unlock`).
+     - مسح كاش وسجلات الراديو (`logcat -b radio -c`).
+     - إعادة تشغيل الراديو `AT+CFUN=1,1`.
+     - طباعة `.OK_BOOST..\n` للتكامل التلقائي مع واجهة C#.
+2. **دعم الأوامر المباشرة دون الحاجة لبادئة (`AT:`):**
+   - يدعم إدخال أوامر AT القياسية مباشرة (`AT`, `AT+DEVCONINFO`, `AT+CPIN?`, `AT+CFUN=1,1`, `+CSQ`, `$QCRMCALL`, `GETSPR`, `SETSPR`, `SRELOCK1`) دون إلزام المستخدم بكتابة `AT:` قبل الأمر.
+   - تنظيف أوتوماتيكي لمسافات وأحرف نهاية الأسطر (`\r\n`) قبل الإرسال لمنع أخطاء السيريال.
+3. **قناة التحويل التلقائي عبر المنفذ 2600 (`CH_TCP_RELAY_2600`):**
+   - في حال كان الهاتف بوضع SELinux Enforcing وصلاحيات الوصول المباشر لـ `/dev/umts_atc0` محجوبة، يتحول الجسر تلقائياً إلى منفذ الاتصال المحلي `localhost:2600` لإمرار الأوامر عبر التطبيق المساعد أو مكرر Netcat بسلاسة تامة.
+4. **دالة `execute_carrier_relock(mcc_mnc_bcd_hex, verbose)`:**
    - تستقبل بايتات BCD (مثل `421F0100` لسبأفون أو `31012000` لسبرينت).
    - تبني إطار IPC من نوع `0601...` لأمر `SRELOCK1` / `SETSPR`.
    - ترسله عبر القناة النشطة وتعيد ضبط الراديو لتثبيت القفل.
-3. **دالة `print_full_telemetry(verbose)`:**
+5. **دالة `print_full_telemetry(verbose)`:**
    - تستخرج خصائص النظام مدمجة مع قراءات المودم الحية من NVRAM.
    - ترجع سطر قياس موحد: `DEVINFO|MODEL=...|BRAND=...|CSC=...|AND=...|SN=...|IMEI=...|DEVCON=...`
-4. **دالة `execute_radio_action(action, verbose)`:**
+6. **دالة `execute_radio_action(action, verbose)`:**
    - تدعم `REBOOT`, `OFF`, `ON`, `FACTORST`, `SWRESET`.
-5. **دالة `query_akseedno(verbose)`:**
+7. **دالة `query_akseedno(verbose)`:**
    - تستعلم عن بذرة التحدي الأمني من المودم `AT+AKSEEDNO=1,0`.
 
 ### 2.3 حل مشكلة الأوامر المشفرة
 * في السابق، كان ملف `AT` القديم (المستخرج من الأداة التجارية KEY-Tool) يتوقف عند بدء التشغيل وينتظر `Token AuthKey:` ثم يطلب مفتاحين RSA كل منهما 512 حرف، وإذا أرسلت أوامر عادية يرفضها ولا ينفذ سوى تغيير CSC المشفر بسيرفرهم.
 * في نسختنا الجديدة:
-  1. جعلنا الوضع الافتراضي **شفافاً ومباشراً بنسبة 100% (Raw Transparent Mode)**؛ فالأوامر النصية (`AT:...`, `BOOST`, `DEVINFO`, `LOCKS`, `RADIO:...`, `CSC:...`) وحزم الـ HEX تنفذ مباشرة دون أي إعاقة أو اشتراط توكن خارجي.
+  1. جعلنا الوضع الافتراضي **شفافاً ومباشراً بنسبة 100% (Raw Transparent Mode)**؛ فالأوامر النصية (`AT:...`, `AT+...`, `BOOST`, `/boost`, `DEVINFO`, `LOCKS`, `RADIO:...`, `CSC:...`) وحزم الـ HEX تنفذ مباشرة دون أي إعاقة أو اشتراط توكن خارجي.
   2. التشفير التدفقي (Xorshift32) أصبح اختيارياً بالكامل؛ إذا أرادت الواجهة تفعيله ترسل `AUTH:<SEED>`، وإذا لم ترسل يعمل النظام بوضع البايتات الصافية.
 
 ---
@@ -117,6 +124,8 @@
 4. [RadioControlWorkflow.cs](file:///c:/Users/Administrator/Documents/GitHub/gsmtools/GsmTools.Desktop/Workflows/RadioControlWorkflow.cs): مسؤولة عن أوامر الراديو وإعادة الضبط وتحدي الأمان `AKSEEDNO`.
 5. [InteractiveAtWorkflow.cs](file:///c:/Users/Administrator/Documents/GitHub/gsmtools/GsmTools.Desktop/Workflows/InteractiveAtWorkflow.cs): مسؤولة عن إدارة طرفية AT التفاعلية وإرسال واستقبال الأوامر المباشرة.
 6. [SamsungCscWorkflow.cs](file:///c:/Users/Administrator/Documents/GitHub/gsmtools/GsmTools.Desktop/Workflows/SamsungCscWorkflow.cs): مسؤولة عن تغيير كود المنطقة CSC بالطريقة 1 والطريقة 2.
+7. [PersistentAtBridgeSession.cs](file:///c:/Users/Administrator/Documents/GitHub/gsmtools/GsmTools.Desktop/Core/PersistentAtBridgeSession.cs): توجيه ذكي للأوامر النصية بحيث ترسل أوامر الجسر التفاعلية (`STATUS`, `SCAN`, `DEVINFO`, `LOCKS`, `BOOST`, `/boost`) وأوامر AT الصافية دون تشويهها ببادئات غير متوافقة.
+8. [MainWindowViewModel.cs](file:///c:/Users/Administrator/Documents/GitHub/gsmtools/GsmTools.Desktop/ViewModels/MainWindowViewModel.cs): ربط مباشر لأحداث سجل العمليات (`OnLog += HandleWorkflowLog`) وتمرير آمن للخيوط المتعددة عبر `Dispatcher.CheckAccess()` لضمان تدفق سجل العمليات إلى الطرفية الحية في الوقت الفعلي.
 
 ### 3.2 النماذج والمحللات الذكية (Models & Parsers)
 * [MccMncDatabase.cs](file:///c:/Users/Administrator/Documents/GitHub/gsmtools/GsmTools.Desktop/Core/MccMncDatabase.cs):
@@ -230,12 +239,14 @@ dotnet publish -c Release -r win-x64 --self-contained false
    - فحص استخلاص حقول `+DEVCONINFO`: **نجاح 100%**.
    - فحص قاعدة بيانات المشغلين `references/MCC_MNC_LIST.csv` (1,689 سجلاً): **نجاح 100%**.
 
-4. **حزمة اختبارات سير العمل الشاملة (5/5 Suites Passed):**
+4. **حزمة اختبارات سير العمل الشاملة (7/7 Suites Passed):**
    - حالات الحافة لمحلل DEVCONINFO: **نجاح**.
    - سيناريوهات أقفال الشريحة والشبكة (Unlocked, Locked, Absent SIM): **نجاح**.
    - محاكاة سير عمل فك قفل بوست وسبرينت وإعادة القفل: **نجاح**.
    - محاكاة أوامر الراديو وإعادة الضبط: **نجاح**.
    - فحص صيغة حزم الـ CSC الخمس ومطابقتها لسجلات التشخيص: **نجاح**.
+   - اختبار توجيه الأوامر التفاعلية في الجسر `at_bridge.c` ومعالجة `/boost` والأوامر الصافية: **نجاح**.
+   - اختبار تنسيق وإرسال أوامر الجلسة في `PersistentAtBridgeSession.cs`: **نجاح**.
 
 ---
 **تم بحمد الله اكتمال كافة متطلبات التحديث الهندسي بنجاح وجاهزية تامة.**
