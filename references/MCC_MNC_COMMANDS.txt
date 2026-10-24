@@ -1,0 +1,273 @@
+# MCC & MNC COMMANDS — قائمة مسطحة قابلة للـgrep
+# التاريخ: 23/10/2026
+# الوسوم:
+#   [AT-BIN]     نص/منطق داخل ملف AT نفسه
+#   [AT-BRIDGE]  معرّف في مصدر at-bridge
+#   [OBS-AT]     أمر AT مرصود في سجلات L24 (مع عدد المرات)
+#   [OBS-ADB]    أمر ADB مرصود (مع عدد المرات)
+#   [PROP]       خاصية أندرويد
+#   [STD]        أمر 3GPP معياري — غير مرصود في جلساتنا
+#   [TOOL]       نص داخل أداة كمبيوتر (Q-Unlocker / KEY-Tool)
+#   [PAYLOAD]    صيغة بيانات / حزمة
+#   [DB]         حقل/جدول قاعدة Octoplus
+#   [NOTE]       ملاحظة أو حد تحليل
+#
+# المصادر الأساسية:
+#   AT                    = C:\Users\pc5\Documents\AT\AT
+#   at-bridge             = C:\Users\pc5\Documents\GitHub\gsmtools\at-bridge\jni\all_gsm_commands.h
+#   OBSERVED              = C:\Users\pc5\Documents\AT\OBSERVED_AT_COMMANDS.txt
+#   Q-Unlocker            = ...\PhoenixGSM\tools\DmpScanner\relock_extracted_results.txt + region_results.txt
+#   KEY-Tool              = C:\Users\pc5\Desktop\KEY-Tool.DMP
+#   MCC_MNC_LIST          = C:\Program Files (x86)\Octoplus\Octoplus_Samsung\MCC_MNC_LIST
+#
+# ============================================================
+# 1) أوامر AT المباشرة — مرصودة
+# ============================================================
+[OBS-AT x35]	AT+DEVCONINFO	يعيد MNC(...);MCC(...) — المصدر الأساسي
+[OBS-AT x16]	AT+SVCIFPGM=1,1	Info 2 / Read Mobile Info — مرافق لـ DEVCONINFO
+[OBS-AT x34]	AT+CIMI	IMSI — MCC (3) + MNC (2/3) + MSIN
+[OBS-AT x27]	AT+CIMI=?	استعلام نطاق CIMI
+[OBS-AT x29]	AT+CPIN?	حالة الشريحة — prerequisite قبل CIMI
+[OBS-AT x26]	AT+CPIN	صيغة بدون علامة استفهام
+[OBS-AT x38]	AT+CSQ	شدة الإشارة — مساعد
+[OBS-AT x27]	AT+CSQ=?	استعلام نطاق CSQ
+[OBS-AT x27]	AT+CFUN?	حالة الراديو
+[OBS-AT x27]	AT+CFUN=?	استعلام نطاق CFUN
+[OBS-AT x30]	AT+CFUN=1	تشغيل الراديو
+[OBS-AT x2]	AT+CFUN=1,1	إعادة تشغيل الراديو
+[OBS-AT x36]	AT+CSCS	مجموعة المحارف
+[OBS-AT x27]	AT+CSCS=?	استعلام مجموعة المحارف
+# ============================================================
+# 2) أوامر سامسونج/الأدوات — مرصودة
+# ============================================================
+[OBS-AT x18]	AT+PRECONFG=2	إعداد مسبق للمشغل/المنطقة
+[OBS-AT x2]	AT+PRECONFG=2,0	إعداد مسبق بقيمة 0
+[OBS-AT x4]	AT+RFBYCODE=1,1,0	تغيير CSC/Region
+[OBS-AT x2]	AT+RFBYCODE=2,0	تغيير CSC/Region
+[OBS-AT x2]	AT+RFBYCODE=2,0,XAA	تغيير CSC إلى XAA
+[OBS-AT x4]	AT+RFBYCODE=2,1	تغيير CSC/Region
+[OBS-AT x4]	AT+RFBYCODE=2,1,XAA	تغيير CSC إلى XAA
+[OBS-AT x2]	AT+UNLOCKSPR=OLD	فك قفل SPR — Q-Unlocker RAM 0x01BB02CA
+[OBS-AT x2]	AT+SIMLOCKU=0,0,0	بيانات قفل SIM — Q-Unlocker RAM 0x01BAD6D7
+[OBS-AT x2]	AT+SIMLGDATA	بيانات قفل LG SIM
+[OBS-AT x2]	AT+SIMLGDATA=357923101971102	بيانات قفل LG SIM
+[OBS-AT x4]	AT+SIMLGDATA=990013500173492	بيانات قفل LG SIM
+# ============================================================
+# 3) من مصدر at-bridge (غير مرصودة في AT)
+# ============================================================
+[AT-BRIDGE]	AT+DEVCONINFO	all_gsm_commands.h:83
+[AT-BRIDGE]	AT+PRECONFG=1,0	all_gsm_commands.h:79 (قراءة)
+[AT-BRIDGE]	AT+PRECONFG=2,%s	all_gsm_commands.h:80 (كتابة)
+[AT-BRIDGE]	AT+CLCK="PN",2	Network Lock — at-bridge
+[AT-BRIDGE]	AT+CLCK="PU",2	Network Subset Lock
+[AT-BRIDGE]	AT+CLCK="PP",2	Service Provider Lock
+[AT-BRIDGE]	AT+CLCK="PC",2	Corporate Lock
+[AT-BRIDGE]	AT+CPIN?	حالة الشريحة — at-bridge
+[AT-BRIDGE]	AT+CFUN=...	تحكم الراديو — at-bridge
+[AT-BRIDGE]	AT+FACTORST	Factory reset — at-bridge
+# ============================================================
+# 4) SRELOCK / SRELOCK1 — إعادة قفل المشغل
+# ============================================================
+[AT-BIN]	SRELOCK	نص في AT — Ghidra 0x2aa350 (raw 0x1aa350)
+[AT-BIN]	srelock	نسخة صغيرة — Ghidra 0x2aa358
+[AT-BIN]	prefix_cmp(input,"SRELOCK",7)	مقارنة البادئة — raw 0x65a30-0x65a40 (يُرجّح strncmp)
+[AT-BIN]	flag [x19+0x32f]	علم الحالة — raw 0x65a5c
+[TOOL]	SRELOCK1	Q-Unlocker — relock_extracted_results.txt:20/76/80
+[TOOL]	Invalid MCC-MNC	Q-Unlocker — نفس الملف
+[TOOL]	Length of MCC-MNC bytes:	Q-Unlocker — region_results.txt:11/35
+[TOOL]	Select MCC/MNC List	Q-Unlocker — relock_extracted_results.txt:96/113
+[TOOL]	Search Networks (Country, Operator, MCC, MNC)	Q-Unlocker
+[TOOL]	Carrier Relock	Q-Unlocker
+[TOOL]	Carrier Relock M1	Q-Unlocker
+[TOOL]	Carrier Relock M2	Q-Unlocker
+[TOOL]	Carrier Relock Done. Please Reboot Device Manually.	Q-Unlocker
+[TOOL]	Method 1	Q-Unlocker — Choose the Relock Method
+[TOOL]	Method 2	Q-Unlocker — Choose the Relock Method
+# ============================================================
+# 5) MCCREQ — صيغة الحزمة (Q-Unlocker → Server)
+# ============================================================
+[PAYLOAD]	MCCREQ=421F0100421F0200421F0300421F0400421F1000421F1100	24 بايت = 6 سجلات × 4 بايت
+[PAYLOAD]	421F0100	MCC 421 + MNC 01 (Sabaphone)
+[PAYLOAD]	421F0200	MCC 421 + MNC 02 (MTN/Spacetel)
+[PAYLOAD]	421F0300	MCC 421 + MNC 03 (Yemen Mob. CDMA)
+[PAYLOAD]	421F0400	MCC 421 + MNC 04 (HITS/Y Unitel)
+[PAYLOAD]	421F1000	MCC 421 + MNC 10 (أو 16 لو كان الحقل uint16 LE) — غير موجود في القاعدة
+[PAYLOAD]	421F1100	MCC 421 + MNC 11 (أو 17 لو كان الحقل uint16 LE) — غير موجود في القاعدة
+[PAYLOAD]	4-byte record = MCC_BCD (2B) + MNC_BCD (1B) + 0x00	الترميز المرصود
+[NOTE]	MNC ثلاثي الخانات غير مرصود — لا تجزم بترميزه في هذا الحقل
+[NOTE]	MCCREQ MNC 10/11 مقابل 16/17 (uint16 LE) — غير محسوم
+[NOTE]	MCCREQ قائمة اختيار وليست قراءة من الجهاز
+# ============================================================
+# 5b) صيغ الردود
+# ============================================================
+[PAYLOAD]	+DEVCONINFO: ...;MNC(01);MCC(421);PRD(ATT);...	رد المودم — MNC قبل MCC
+[PAYLOAD]	IMSI = MCC(3) + MNC(2/3) + MSIN	مثال: 421011234567890 → 421 / 01 / 1234567890
+[PAYLOAD]	+COPS: 0,2,"42101",7	مشغل حالي بصيغة numeric
+[PAYLOAD]	+COPS: (2,"Sabaphone","Sabaphone","42101",7),...	قائمة مشغلين متاحين
+[PAYLOAD]	gsm.sim.operator.numeric = 42101	خاصية أندرويد — MCC+MNC
+# ============================================================
+# 6) أوامر 3GPP المعيارية (غير مرصودة)
+# ============================================================
+[STD]	AT+COPS?	المشغل الحالي
+[STD]	AT+COPS=?	سرد المشغلين المتاحين مع MCC/MNC
+[STD]	AT+COPS=0	اختيار تلقائي
+[STD]	AT+COPS=1,2,"<MCC><MNC>"	اختيار يدوي — مثال: AT+COPS=1,2,"42101"
+[STD]	AT+COPS=2	إلغاء التسجيل
+[STD]	AT+COPS=3,0	صيغة alphanumeric
+[STD]	AT+COPS=3,1	صيغة short alphanumeric
+[STD]	AT+COPS=3,2	صيغة numeric
+[STD]	AT+COPS=4,...	اختيار يدوي/تلقائي
+[STD]	AT+CREG?	حالة تسجيل GSM
+[STD]	AT+CREG=1	تمكين إشعارات التسجيل
+[STD]	AT+CREG=2	تمكين عرض LAC/CI
+[STD]	AT+CGREG?	حالة تسجيل GPRS
+[STD]	AT+CEREG?	حالة تسجيل LTE/EPS
+[STD]	AT+CPOL?	قائمة PLMN المفضلة
+[STD]	AT+CPOL=<index>,2,"<MCC><MNC>"	إضافة مشغل للقائمة
+[STD]	AT+CPLS=0	اختيار قائمة PLMN على SIM
+[STD]	AT+CPLS=1	اختيار قائمة PLMN على USIM
+[STD]	AT+CPLS=2	اختيار قائمة OPLMN
+# ============================================================
+# 7) خصائص أندرويد — MCC/MNC
+# ============================================================
+[PROP]	gsm.sim.operator.numeric	MCC+MNC للشريحة — at-bridge:147 — مرصود 14
+[PROP]	gsm.operator.numeric	MCC+MNC للشبكة الحالية — at-bridge:148 — غير مرصود
+[PROP]	gsm.sim.operator.alpha	اسم مشغل الشريحة
+[PROP]	gsm.sim.operator.iso-country	دولة مشغل الشريحة
+[PROP]	gsm.operator.alpha	اسم الشبكة الحالية — مرصود 13
+[PROP]	gsm.operator.iso-country	دولة الشبكة — مرصود 11
+[PROP]	gsm.network.type	نوع الشبكة — مرصود 16
+[PROP]	gsm.sim.state	حالة الشريحة — مرصود 11
+[PROP]	ro.csc.sales_code	CSC — at-bridge:142 — مرصود 1
+[PROP]	ro.csc.countryiso_code	دولة CSC — at-bridge:143
+[PROP]	ro.boot.carrierid	Carrier ID — مرصود 25
+[PROP]	persist.sys.prev_salescode	CSC السابق — مرصود 12
+# ============================================================
+# 8) أوامر ADB — مرصودة
+# ============================================================
+[OBS-ADB x14]	adb -s <serial> shell getprop gsm.sim.operator.numeric	MCC+MNC للشريحة
+[OBS-ADB x13]	adb -s <serial> shell getprop gsm.operator.alpha	اسم الشبكة
+[OBS-ADB x11]	adb -s <serial> shell getprop gsm.operator.iso-country	ISO الدولة
+[OBS-ADB x11]	adb -s <serial> shell getprop gsm.sim.state	حالة الشريحة
+[OBS-ADB x16]	adb -s <serial> shell getprop gsm.network.type	نوع الشبكة
+[OBS-ADB x25]	adb -s <serial> shell getprop ro.boot.carrierid	Carrier ID
+[OBS-ADB x12]	adb -s <serial> shell getprop persist.sys.prev_salescode	CSC السابق
+[OBS-ADB x1]	adb shell getprop ro.csc.sales_code	CSC الحالي — تشخيصي
+[OBS-ADB x7]	adb shell service call iphonesubinfo 1	IMEI (في الأداة) — ليس MCC/MNC
+[OBS-ADB x3]	adb shell service call iphonesubinfo 2	معرّف شريحة — المعنى يختلف حسب الإصدار
+[OBS-ADB x3]	adb shell service call iphonesubinfo 15	معرّف شريحة — المعنى يختلف حسب الإصدار
+# ============================================================
+# 9) أوامر ADB — معيارية/مساعدة (غير مرصودة)
+# ============================================================
+[STD]	adb shell getprop | grep -E "gsm\.(sim\.)?operator\.(numeric|alpha|iso-country)"	كل خصائص المشغل
+[STD]	adb shell dumpsys telephony.registry | grep -Ei "mcc|mnc|operatorNumeric|countryIso"	سجل الهاتف
+[STD]	adb shell content query --uri content://telephony/carriers --projection numeric,name	APN + MCC/MNC
+# ============================================================
+# 10) قاعدة Octoplus MCC_MNC_LIST
+# ============================================================
+[DB]	mytable.MCC	كود الدولة
+[DB]	mytable.MCC_int	MCC رقمي
+[DB]	mytable.MNC	كود الشبكة
+[DB]	mytable.MNC_int	MNC رقمي
+[DB]	mytable.ISO	رمز الدولة ISO
+[DB]	mytable.Country	اسم الدولة
+[DB]	mytable.Country_Code	كود الدولة
+[DB]	mytable.Network	اسم الشبكة
+[DB]	mytable.cheched	علامة فحص
+[DB]	1688 rows / 225 MCC / 224 countries / 1023 networks	إحصاءات القاعدة
+[DB]	SELECT * FROM mytable WHERE MCC=421 AND MNC=1	مثال استعلام
+# ============================================================
+# 11) KEY-Tool — أسماء وأدوات MCC/MNC
+# ============================================================
+[TOOL]	MCCMNC.txt	KEY-Tool.DMP @0x16c62c5 (ASCII) / 0x6c0f975 (UTF-16LE)
+[TOOL]	AT_SamMCCMNCTool_V1_arm64_KT	KEY-Tool.DMP @0x6c0f9cf (UTF-16LE)
+[TOOL]	AT_SamMCCMNCTool_V1_KT	KEY-Tool.DMP @0x6c0fb87 (UTF-16LE)
+[TOOL]	Reading All MCC+MNC Available :	KEY-Tool.DMP @0x16a515e / 0x16ba48e
+[TOOL]	MNCReLockSlot(int)	keytool_dmp_analysis.txt:42
+[TOOL]	MNCReLockSignal(int)	keytool_dmp_analysis.txt:42
+[TOOL]	mccmnccontinueslot(bool,QString)	keytool_dmp_analysis.txt:42
+[TOOL]	MCCMNCcontinuesignal(bool,QString)	keytool_dmp_analysis.txt:42
+[TOOL]	listmcc	واجهة MCC/MNC — keytool_dmp_analysis.txt:43
+[TOOL]	selectedmcc	واجهة MCC/MNC
+[TOOL]	lineMCC	حقل MCC
+[TOOL]	lineMNC	حقل MNC
+[TOOL]	List MCC-MNC	واجهة
+[TOOL]	Search Line { Country / MCC-MNC }	واجهة بحث
+[TOOL]	Selected MCC-MNC	واجهة
+[TOOL]	Save Profile	حفظ ملف تعريف
+[TOOL]	Load Profile	تحميل ملف تعريف
+# ============================================================
+# 12) ملاحظات وحدود
+# ============================================================
+[NOTE]	AT contains 0 MCC/MNC/COPS/CREG/CIMI/IMSI strings out of 141
+[NOTE]	AT+SVCIFPGM response not fully captured
+[NOTE]	AT+COPS / AT+CREG not observed in L24 sessions
+[NOTE]	gsm.operator.numeric declared in at-bridge only, not observed as ADB command
+[NOTE]	AT_SamMCCMNCTool + MCCMNC.txt are names only in KEY-Tool.DMP; files not local
+[NOTE]	MCCREQ uses 4-byte records; 3-digit MNC encoding unverified
+[NOTE]	SRELOCK prefix compare = 7 chars; SRELOCK1 accepted; payload format after it not fully reversed
+[NOTE]	MCC_MNC_LIST is a local Octoplus DB; 421/10-11 (or 16-17) absent
+# ============================================================
+# 13) أوامر تغيير/إضافة MCC & MNC (WRITE / ADD)
+# ============================================================
+# --- داخل AT (الموزّع FUN_00161334) — أوامر الكتابة الفعلية ---
+[WRITE][AT-BIN]	SETSPR	كتابة SPR (قائمة قفل المشغل التي تحوي MCC/MNC) — Ghidra 0x2aa2d4 — prefix 6 chars @ raw 0x68828
+[WRITE][AT-BIN]	setspr	نسخة صغيرة — Ghidra 0x2aa2dc — prefix 6 chars @ raw 0x6b26c — النتيجة في [x19+0x2e0]
+[WRITE][AT-BIN]	SRELOCK / SRELOCK1	إعادة قفل المشغل بقائمة MCC/MNC — Ghidra 0x2aa350 — prefix 7 chars @ raw 0x65a30
+[WRITE][AT-BIN]	srelock	نسخة صغيرة — Ghidra 0x2aa358 — prefix 7 chars @ raw 0x68000
+[WRITE][AT-BIN]	GETSPR	قراءة SPR الحالي قبل/بعد الكتابة — Ghidra 0x2aa428 — @ raw 0x613cc
+[WRITE][AT-BIN]	EXIT / exit	إنهاء جلسة الأداة — raw 0x69af4 / 0x69bf8
+[WRITE][AT-BIN]	AT+	تمرير أوامر المودم — Ghidra 0x2aa424 — @ raw 0x63130
+# --- ثوابت الكتابة داخل الموزّع ---
+[AT-BIN]	51180004	Ghidra 0x2aa430 — ثابت بروتوكول SPR (يظهر أيضاً في Q-Unlocker)
+[AT-BIN]	5119010532	Ghidra 0x2aa2e8 — ثابت بروتوكول
+[AT-BIN]	01426X1 / 01426x1	Ghidra 0x2aa2f8 / 0x2aa300 — بادئة توكن المصادقة
+[AT-BIN]	000000000000	Ghidra 0x2aa448 — تُقارن مع حقل (فحص سجل أصفار/فارغ) @ raw 0x64784
+[AT-BIN]	52 i32 0  / 128 /130 /131 /132 /135 /136	Ghidra 0x2aa238–0x2aa26c — مقاطع أكواد داخل الموزّع (دلالة دقيقة غير محسومة)
+# --- أوامر المودم المرصودة (كتابة) ---
+[WRITE][OBS-AT x2]	AT+AKSEEDNO=0	بذرة المصادقة قبل الكتابة
+[WRITE][OBS-AT x4]	AT+AKSEEDNO=1,0	بذرة المصادقة قبل الكتابة
+[WRITE][OBS-AT x18]	AT+PRECONFG=2	كتابة preconfig (مشغل/منطقة)
+[WRITE][OBS-AT x2]	AT+PRECONFG=2,0	كتابة preconfig بقيمة 0
+[WRITE][OBS-AT x2]	AT+RFBYCODE=2,0,XAA	كتابة CSC — الرد +RFBYCODE:2,OK
+[WRITE][OBS-AT x4]	AT+RFBYCODE=2,1,XAA	كتابة CSC
+[WRITE][OBS-AT x2]	AT+UNLOCKSPR=OLD	فك قفل SPR
+[WRITE][OBS-AT x2]	AT+SIMLOCKU=0,0,0	التحكم في بيانات قفل SIM
+[WRITE][OBS-AT x8]	AT+SIMLGDATA=<...>	كتابة بيانات قفل LG SIM
+# --- تسلسل الكتابة المرصود (أدوات) ---
+[WRITE][TOOL]	adb push <file> /data/local/tmp/athun	دفع الأداة (مرصود x2)
+[WRITE][TOOL]	adb shell chmod 0777 /data/local/tmp/athun	تفعيل التنفيذ (مرصود x2)
+[WRITE][TOOL]	GETSPR ... SETSPR ... exit ... EXIT	تسلسل قراءة→كتابة SPR — region_results.txt (سياق 26247734)
+[WRITE][TOOL]	SETSPR . Result : OK . exit . EXIT . Unlocking Done	relock_extracted_results.txt
+[WRITE][TOOL]	Reading All MCC+MNC Available : → Writing SIMLock Blob : → Writing Shared2 Blob : → - Writing SIMLock : KEY-Tool — keytool_exploit_flow.txt
+[WRITE][TOOL]	Add Manual + lineMCC + lineMNC + btnOK	إضافة MCC/MNC يدوياً — واجهة KEY-Tool
+[WRITE][TOOL]	Save Profile / Load Profile + MCCMNC.txt	ملفات تعريف قائمة MCC/MNC — KEY-Tool.DMP
+[WRITE][TOOL]	TMB-TMK-VZW-APP-AIO-XAU	المشغلون المدعومون لإعادة القفل — Q-Unlocker
+[WRITE][TOOL]	Select MCC/MNC List → MCCREQ (JSON) → apirelock/ → SRELOCK1	مسار Carrier Relock
+[WRITE][TOOL]	adb shell rm /data/local/tmp/athun	تنظيف (مرصود x2)
+[WRITE][OBS-AT x4]	adb shell logcat -b radio -c	تنظيف سجل الراديو
+# --- أوامر ADB مرافقة (مرصودة) ---
+[WRITE][OBS-ADB x2]	adb shell pm uninstall -k --user -0 com.sec.android.AutoPreconfig	إزالة preconfig سامسونج
+[WRITE][OBS-ADB x2]	adb shell pm uninstall -k --user 0 com.sec.android.CarrierCodeChanger	إزالة مغيّر كود المشغل
+[WRITE][OBS-ADB x2]	adb shell settings put  Secure assistant com.google.android.googlequicksearchbox/...	إعداد مساعد Gsa
+[WRITE][OBS-ADB x2]	adb shell content insert --uri content://com.lge.node/omadm_node --bind key:s:OMADM_SIMLOCK --bind value:i:2	كتابة علم قفل LG SIM
+# --- حزم تغيير CSC من at-bridge (قوالب كتابة) ---
+[WRITE][AT-BRIDGE]	0601000E0000%s0000%s	حقنة CSC 1/5
+[WRITE][AT-BRIDGE]	060100090000%s	حقنة CSC 2/5
+[WRITE][AT-BRIDGE]	060100120000%s0000%s%s	حقنة CSC 3/5
+# --- أوامر 3GPP لإضافة/تعديل MCC/MNC (معيارية) ---
+[WRITE][STD]	AT+CPOL=<index>,2,"<MCCMNC>"	إضافة/تعديل مشغل في قائمة PLMN المفضلة
+[WRITE][STD]	AT+CPOL=<index>	حذف مدخل من القائمة
+[WRITE][STD]	AT+CPOL?	قراءة القائمة
+[WRITE][STD]	AT+CPLS=0/1/2	اختيار القائمة (SIM/USIM/OPLMN)
+[WRITE][STD]	AT+COPS=1,2,"<MCCMNC>"	اختيار يدوي (لا يُضاف للقائمة)
+[WRITE][STD]	AT+CLCK="PN",1,"<pwd>"	تفعيل Network Lock (1=قفل، 0=فك، 2=استعلام)
+# --- Android: إضافة APN يحمل MCC/MNC (معياري) ---
+[WRITE][STD]	adb shell content insert --uri content://telephony/carriers --bind numeric:s:"42101" --bind name:s:"..." --bind apn:s:"..." --bind mcc:s:"421" --bind mnc:s:"01"	إضافة APN
+[WRITE][STD]	adb shell content update --uri content://telephony/carriers --where "numeric='42101'" --bind ...	تعديل APN
+[WRITE][STD]	adb shell content delete --uri content://telephony/carriers --where "numeric='42101'"	حذف APN
+# --- ملاحظات ---
+[NOTE]	لا يوجد أمر AT معياري لتغيير MCC/MNC المطبوع في الشريحة (IMSI)
+[NOTE]	SETSPR/GETSPR لم يُرصدا في سجلات L24 — دليلهما AT + استخراج Q-Unlocker
+[NOTE]	AT+AKSEEDNO رده يُطابق +AKSEEDNO:\d+,(\d+)-(\d+)-(\d+) — General Unlocker Pro RAM 0x01F2EE00
+[NOTE]	المفتاح: خذ نسخة (GETSPR / Reading SIMLock Blob) قبل أي كتابة

@@ -1,0 +1,36 @@
+AT_unpacked.elf — نصوص/أوامر مستخرجة من الملف (نسخة أخرى من الأداة)
+الحجم: 1264728 بايت | عدد النصوص ذات الصلة: 31
+ملاحظة: هذه نسخة مختلفة عن AT الحالي؛ بعض نصوصها مشفرة/مبعثرة وتحتاج تفريغ رام لتأكيدها.
+====================================================================================================
+
+0x0127ca  socket
+0x03d385  unsupported restore location for float register
+0x03d5fe  Error: %s
+0x03d6b1  unsupported arm64 register
+0x03e3be  Ril Token Error, Try Again
+0x03e683  Wrong AuthKey Error
+0x03e79b  allocator<T>::allocate(size_t n) 'n' exceeds maximum supported size
+0x03e88d  DW_EH_PE_aligned pointer encoding not supported
+0x03e9b9  April
+0x03ea42  unsupported restore location for register
+0x03ea79  EXIT
+0x03ecde   [+] Authantication Token : %s
+0x03ee44  DW_EH_PE_funcrel pointer encoding not supported
+0x03ee74  libunwind: Unsupported .eh_frame_hdr version
+0x03ef67  RIL Exit
+0x03f0ef   > /dev/null 2>&1
+0x03f101  Worng Ril Command
+0x03f260    [+] Ril Error 1 
+0x03f56d  unsupported locale for standard input
+0x03f720  echo "am start -n com.sec.hiddenmenu/.IOTHiddenMenu -e 7267864872 72678647376477466 > /dev/null 2>&1 
+0x03f788   [+] Enter Authantication Key : 
+0x03f837  UEsDBAoAAAgAAAAAITp9Yo4VYgYAAGIGAAAZAAUAcmVzL2RyYXdhYmxlL2ZkbV9sb2dvLnBuZ/7KAAAAiVBORw0KGgoAAAANSUhEUgAAAKcAAAA5CAQAAAD5... <Base64/blob — 224092 chars; extracted to EMBEDDED_APK>
+0x076396    [+] Ril Error 2 
+0x076618  DW_EH_PE_textrel pointer encoding not supported
+0x0769d3  locale not supported
+0x076df0  ,main -c > /dev/h
+0x077140  ps -a 2>/dev/nul\&
+0x077210  ro.product.modell|grep logcat 2>G
+0x0775d0  -c > /dev/null 2
+0x0776f0  logcat -b systemlogcat -b radio 
+0x077aa8  /dev/nul

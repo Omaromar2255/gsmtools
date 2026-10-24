@@ -1,0 +1,419 @@
+14	AT#APH
+6	AT$QCDMG
+4	AT%DLOAD
+13	AT%FRST
+13	AT%KEYLOCK=0
+9	AT%LA
+2	AT%SLENC=32
+2	AT%SLNONCE?
+13	AT%USB=adb,mtp
+2	AT*N4
+10	AT*Z12S
+35	AT+ACTIVATE=0,0,0
+2	AT+AKSEEDNO=0
+4	AT+AKSEEDNO=1,0
+15	AT+ALL
+2	AT+BANSELCT=2,AUTO
+2	AT+BANSELCT=2,LTE3PREF
+12	AT+BKADB=2
+12	AT+BKAUTH=2
+12	AT+BKFEATURE=1,0
+12	AT+BKPROP=0,ro.vivo.oem.name
+12	AT+BKPROP=0,ro.vivo.product.model
+12	AT+BKPROP=0,ro.vivo.product.version
+13	AT+BKREB
+13	AT+BKREBOOT=1
+12	AT+BKRID=1
+12	AT+BKRT=1
+12	AT+BKRTALL=1
+12	AT+BKZSJ=0
+13	AT+BK_WRITE_RPMB=6,IMEI
+13	AT+BK_WRITE_RPMB=6,IMEI2
+2	AT+BLOBSIGN=1,0,0
+8	AT+BLOBSIGN=1,1,0
+4	AT+BLOBSIGN=3,1,0
+3	AT+CB
+38	AT+CBC
+27	AT+CBC=?
+2	AT+CEMODE=2
+30	AT+CFUN=1
+2	AT+CFUN=1,1
+27	AT+CFUN=?
+27	AT+CFUN?
+3	AT+CG
+3	AT+CGM0
+3	AT+CGM0J
+41	AT+CGMI
+41	AT+CGMM
+47	AT+CGMR
+34	AT+CGSN
+3	AT+CH
+31	AT+CHUP
+3	AT+CI0J
+3	AT+CIM0
+3	AT+CIM0J
+34	AT+CIMI
+27	AT+CIMI=?
+27	AT+CIND=?
+27	AT+CIND?
+3	AT+CL
+32	AT+CLAC
+39	AT+CLIP=1
+27	AT+CLIP=?
+2	AT+CM
+13	AT+CMEE=0
+26	AT+CMGD
+29	AT+CMGF=0
+29	AT+CMGF=1
+27	AT+CMGF=?
+29	AT+CMGL
+27	AT+CMGL=?
+26	AT+CMGR
+23	AT+CMGS
+5	AT+CN
+15	AT+CNMA
+20	AT+CNMA=0
+27	AT+CNMA=?
+5	AT+CNMI
+20	AT+CNMI=1,1
+23	AT+CNMI=1,1,2,1
+21	AT+CNMI=1,1,2,1,0
+20	AT+CNMI=1,2
+23	AT+CNMI=1,2,2,1
+21	AT+CNMI=1,2,2,1,0
+36	AT+CNMI=2,1
+26	AT+CNMI=2,1,,2
+21	AT+CNMI=2,1,1,2
+21	AT+CNMI=2,1,2,1
+21	AT+CNMI=2,1,2,2
+36	AT+CNMI=2,2
+26	AT+CNMI=2,2,,1
+23	AT+CNMI=2,2,2,1
+22	AT+CNMI=2,3
+27	AT+CNMI=?
+6	AT+CP
+3	AT+CP0J
+33	AT+CPBR
+39	AT+CPBR=?
+39	AT+CPBS
+27	AT+CPBS=?
+39	AT+CPBS?
+36	AT+CPBW
+27	AT+CPBW=?
+26	AT+CPIN
+29	AT+CPIN?
+5	AT+CPM
+45	AT+CPMS
+27	AT+CPMS=?
+39	AT+CPMS?
+5	AT+CS
+36	AT+CSCS
+27	AT+CSCS=?
+10	AT+CSMS
+11	AT+CSMS=0
+20	AT+CSMS=1
+27	AT+CSMS=?
+27	AT+CSMS?
+38	AT+CSQ
+27	AT+CSQ=?
+2	AT+CU
+6	AT+CUS
+6	AT+CUSD
+38	AT+CUSD=1
+16	AT+DEBUGLVC=0,5
+15	AT+DETALOCK=2,00000000,00000000,00000000,00000000,00000000,00000000
+4	AT+DETALOCK=2,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000
+13	AT+DETALOCK=2,1111111111111111,2222222222222222,0000000000000000,0000000000000000,0000000000000000,0000000000000000
+35	AT+DEVCONINFO
+15	AT+DUMPCTRL=1,0
+13	AT+EGMR=0,10
+12	AT+EGMR=0,7
+13	AT+EGMR=1,10
+13	AT+EGMR=1,7
+3	AT+ETMOSK=0
+3	AT+ETMOSLB=2
+1	AT+ETMOSLB=9,58,
+3	AT+ETMOSLB=9,66,
+12	AT+ETST=1
+1	AT+EUULK=1
+1	AT+EUULK=2,2
+5	AT+FACTORST=0,0
+2	AT+FACTORST=0,2
+4	AT+FAILDUMP=0,1
+2	AT+FRPUNLCK=3,0,0
+8	AT+FUS?
+2	AT+IMEI
+6	AT+IMEISIGN=0,1,0
+2	AT+IMEISIGN=1,1,0
+2	AT+IMEISIGN=1,2,0
+4	AT+IMEISIGN=2,1,01
+2	AT+IMEISIGN=2,1,02
+2	AT+IMEISIGN=2,1,03
+2	AT+IMEISIGN=2,1,04
+2	AT+IMEISIGN=2,1,05
+4	AT+IMEISIGN=2,1,FF
+9	AT+IMEITEST=1,0
+2	AT+IMEITEST=1,2
+2	AT+IMEITEST=2
+2	AT+IMEITEST=3
+17	AT+KSTRINGB=0,3
+13	AT+LOCKFLAG=0,1
+15	AT+LOCKINFO=2,0,00,N,N,N,N
+2	AT+LVLOCK=910ec1595f3a91bb38e4d6f00915e63a
+2	AT+LVOFLOCK=1,0
+2	AT+MEIDAUTH=0,0,2009031920090615
+2	AT+MEIDAUTH=0,0,2013032720130823
+2	AT+MEIDAUTH=0,0,FFFFFFFFFFFFFFFF
+2	AT+MEIDAUTH=0,1,000000
+2	AT+MEIDAUTH=2,0,000000
+6	AT+MSLSECUR=1,0
+4	AT+MSLSECUR=2
+4	AT+MSLSECUR=2,0000000000
+2	AT+MSLSECUR=3
+17	AT+MSLSECUR=6,0,014C173D93762B496EF2A853A41ACA67990714160F5A2F3EDFE87563ECCFF5A8B9B93A339C246F1FE22E4A9459101F7E9A23F66673EDB48E3658949F804BD964C8DED230
+17	AT+MSLSECUR=6,0,024904EA4437D7
+17	AT+MSLSECUR=6,0,037DA2DBB6B130BA06FEF5241A89F369BDCB7BB6FC69E71387F9AE4068E93CD5E39126D9936CCE5C8DF32E0BEE8246223B54B162865EE65BA88718CC04EFC51DB45B5B17
+15	AT+MSLSECUR=6,0,0415C34E59AF924B1BCE98B47BE9D6050601DE83BE91A9B25F21BAF
+15	AT+MSLSECUR=6,0,0504462BBFB52B7A2288B707990A861A39FA9427D499F438A26A123B32F0EEB6B708
+15	AT+MSLSECUR=6,0,FF
+4	AT+NBOOT
+4	AT+OK
+2	AT+PARALLEL=2,0,00000
+14	AT+POWRESET=0,0
+18	AT+PRECONFG=2
+2	AT+PRECONFG=2,0
+16	AT+Q8HVPR
+2	AT+REACTIVE=1,0,0
+4	AT+RFBYCODE=1,1,0
+2	AT+RFBYCODE=2,0
+2	AT+RFBYCODE=2,0,XAA
+4	AT+RFBYCODE=2,1
+4	AT+RFBYCODE=2,1,XAA
+2	AT+SETBAND
+2	AT+SIMLGDATA
+2	AT+SIMLGDATA=357923101971102
+4	AT+SIMLGDATA=990013500173492
+2	AT+SIMLOCKU=0,0,0
+36	AT+SPDIAG=
+5	AT+SUDDLMOD=0,0
+2	AT+SVCBANDB=2,1,L03
+2	AT+SVCBANDB=2,1,L28
+2	AT+SVCBANDB=2,2,0
+16	AT+SVCIFPGM=1,1
+26	AT+SWATD=0
+1	AT+SWATD=01
+37	AT+SWATD=1
+2	AT+SYSSCOPE=1,0
+4	AT+UNKONWN
+2	AT+UNLOCKSPR=OLD
+2	AT+VERSNAME=0,2,5
+14	AT+VERSNAME=3,2,3
+27	AT+WBHV?
+27	AT+WHCNF?
+5	AT+WIND=255
+54	ATE0
+286	ATI
+38	ATZ
+32	AT^CMDL
+3	AT^CU
+7	AT^CURC
+18	AT^CURC=0
+27	AT^CURC=?
+27	AT^CURC?
+27	AT^SIND=?
+27	AT^SIND?
+4	adb  -s LF603D4LTY push C:/test005599/1 /data/local/tmp/1.apk
+19	adb  -s LF603D4LTY shell
+2	adb  -s LF603D4LTY shell am broadcast -a com.cdmayemen.volte.ACTION_CONFIG --es config 1,e
+2	adb  -s LF603D4LTY shell am broadcast -a com.cdmayemen.volte.ACTION_CONFIG --es config 2,e
+1	adb  -s LF603D4LTY shell am start -n com.cdmayemen.volte/.MainActivity
+1	adb  -s LF603D4LTY shell am start -n moe.shizuku.privileged.api/moe.shizuku.manager.MainActivity
+2	adb  -s LF603D4LTY shell chmod 0777 /data/local/tmp/1.apk
+2	adb  -s LF603D4LTY shell dumpsys package com.cdmayemen.volte
+16	adb  -s LF603D4LTY shell getprop gsm.network.type
+13	adb  -s LF603D4LTY shell getprop gsm.operator.alpha
+11	adb  -s LF603D4LTY shell getprop gsm.operator.iso-country
+14	adb  -s LF603D4LTY shell getprop gsm.sim.operator.numeric
+11	adb  -s LF603D4LTY shell getprop gsm.sim.state
+12	adb  -s LF603D4LTY shell getprop gsm.version.baseband
+12	adb  -s LF603D4LTY shell getprop persist.sys.prev_salescode
+25	adb  -s LF603D4LTY shell getprop ro.boot.carrierid
+12	adb  -s LF603D4LTY shell getprop ro.build.version.release
+15	adb  -s LF603D4LTY shell getprop ro.build.version.security_patch
+2	adb  -s LF603D4LTY shell getprop ro.hardware
+49	adb  -s LF603D4LTY shell getprop ro.product.model
+11	adb  -s LF603D4LTY shell getprop sys.usb.state
+16	adb  -s LF603D4LTY shell input keyevent KEYCODE_HOME
+1	adb  -s LF603D4LTY shell pm grant com.cdmayemen.volte moe.shizuku.manager.permission.API_V23
+4	adb  -s LF603D4LTY shell pm install -r /data/local/tmp/1.apk
+1	adb  -s LF603D4LTY shell pm list packages
+3	adb  -s LF603D4LTY shell rm /data/local/tmp/1.apk
+1	adb  -s LF603D4LTY shell sh /sdcard/Android/data/moe.shizuku.privileged.api/start.sh
+2	adb  -s LF603D4LTY shell sh /storage/emulated/0/Android/data/moe.shizuku.privileged.api/start.sh
+1	adb  -s LF603D4LTY uninstall com.safwan.cdmayemenvolteenabler
+1	adb  -s LF603D4LTY uninstall moe.shizuku.privileged.api
+9	adb  -s R5CY625NBYN shell
+3	adb  -s R5CY625NBYN shell getprop
+3	adb  -s R5CY625NBYN shell pm list packages
+5	adb  -s R5CY625NBYN shell su -c id
+5	adb  devices
+1	adb  disconnect
+7	adb  install -r -d
+4	adb  kill-server
+1	adb  shell
+1	adb  shell echo id
+4	adb  shell echo id | toybox nc localhost 2600
+1	adb  shell getprop
+1	adb  shell getprop ro.oem.key2
+3	adb  shell service call iphonesubinfo 1
+4	adb  shell service call iphonesubinfo 1 s16 com.android.shell
+3	adb  shell service call iphonesubinfo 15
+3	adb  shell service call iphonesubinfo 2
+4	adb  version
+9	adb  wait-for-device
+2	adb  wait-for-device shell -tt
+7	adb -L tcp:5037 fork-server server --reply-fd 564
+4	adb -P 5037 fork-server server [Amuhammah]
+6	adb -P 5037 fork-server server [KEY-Tool]
+2	adb backup [-f <file>] [-apk|-noapk] [-obb|-noobb] [-shared|-noshared] [-all] [-system|-nosystem] [<packages...>]
+12	adb backup is deprecated and may be removed in a future release
+5	adb devices
+2	adb devices :
+2	adb devices :OK
+14	adb devices [-l]
+2	adb forward --list           - list all forward socket connections.
+2	adb forward --no-rebind <local> <remote>
+2	adb forward --remove <local> - remove a specific forward socket connection
+2	adb forward --remove-all     - remove all forward socket connections
+2	adb forward <local> <remote> - forward socket connections
+2	adb forward <local> <remote>' but fails
+2	adb install -r -g
+2	adb install [-lrtsdg] <file>
+2	adb install-multiple [-lrtsdpg] <file...>
+14	adb pull
+12	adb pull %s <directory>
+2	adb pull [-p] [-a] <remote> [<local>]
+4	adb push
+2	adb push %1 %2
+2	adb push [-p] <local> <remote>
+6	adb reboot
+2	adb reboot [bootloader|recovery]
+2	adb reboot bootloader
+2	adb reboot cpdebug0x5500
+4	adb reboot debug0x4948
+2	adb reboot debug0x4f4c
+2	adb reboot download
+2	adb reboot sideload          - reboots the device into the sideload mode in recovery program (adb root required).
+2	adb reboot sideload-auto-reboot
+2	adb reboot-bootloader        - reboots the device into the bootloader
+2	adb restore <file>           - restore device contents from the <file> backup archive
+10	adb restore FILENAME [ARG]...
+12	adb restore is deprecated and may be removed in a future release
+2	adb reverse --list           - list all reverse socket connections from device
+2	adb reverse --norebind <remote> <local>
+2	adb reverse --remove <remote>
+2	adb reverse --remove-all     - remove all reversed socket connections from device
+2	adb reverse <remote> <local> - reverse socket connections
+2	adb reverse <remote> <local>' but fails
+14	adb shell
+2	adb shell                    - run remote shell interactively
+2	adb shell <command>          - run remote shell command
+2	adb shell am force-stop com.sec.knox.knoxsetupwizardclient
+2	adb shell am start -n com.google.android.gsf.login.LoginActivity
+2	adb shell am start -n com.google.android.gsf.login/
+2	adb shell am start -n com.octoplusbox.octosprint/com.octoplusbox.octosprint.MainActivity
+2	adb shell am start com.lge.lgcontentsetting/com.lge.lgcontentsetting.ui.activity.LGContentSettingsActivity
+2	adb shell chmod 0777 /data/local/tmp/athun
+2	adb shell chmod 777
+12	adb shell cmd package help`):
+12	adb shell cmd package uninstall -k'.
+2	adb shell content insert --uri content://com.lge.node/omadm_node --bind key:s:OMADM_SIMLOCK --bind value:i:2
+1	adb shell dumpsys gfxinfo
+2	adb shell echo ZWNobyBhbSBzdGFydCAtbiBjb20uc2Ftc3VuZy5hbmRyb2lkLmNpZG1hbmFnZXIvLm1vZHVsZXMucHJlY29uZmlnLlByZWNvbmZpZ0FjdGl2aXR5IC1hIGNvbS5zYW1zdW5nLmFuZHJvaWQu
+2	adb shell getenforce
+3	adb shell getprop
+2	adb shell logcat -b all -c
+4	adb shell logcat -b radio -c
+2	adb shell logcat -b radio -c > /dev/null 2>&1
+2	adb shell logcat -b radio -d
+2	adb shell logcat -b radio -d | grep ': +.:.,' | tail -1
+2	adb shell logcat -c all
+2	adb shell pm clear --user 0 com.knox.vpn.proxyhandler
+2	adb shell pm clear --user 0 com.postmates.android.merchant
+2	adb shell pm clear --user 0 com.samsung.knox.rcp.components
+2	adb shell pm clear --user 0 com.samsung.knox.securefolder
+2	adb shell pm clear --user 0 com.sec.enterprise.knox.cloudmdm.smdms
+2	adb shell pm clear --user 0 com.sec.knox.foldercontainer
+2	adb shell pm clear --user 0 com.sec.knox.kccagent
+2	adb shell pm clear --user 0 com.sec.knox.knoxsetupwizardclient
+2	adb shell pm clear --user 0 com.sec.knox.switcher
+2	adb shell pm disable-user --user 0 com.absolute.android.agent
+2	adb shell pm disable-user --user 0 com.google.android.apps.work.oobconfig
+2	adb shell pm disable-user --user 0 com.knox.vpn.proxyhandler
+2	adb shell pm disable-user --user 0 com.planetcellinc.ressvc
+2	adb shell pm disable-user --user 0 com.samsung.android.knox.containeragent
+2	adb shell pm disable-user --user 0 com.samsung.android.knox.containercore
+2	adb shell pm disable-user --user 0 com.samsung.knox.keychain
+2	adb shell pm disable-user --user 0 com.samsung.knox.securefolder
+2	adb shell pm disable-user --user 0 com.samsung.knox.securefolder.setuppage
+2	adb shell pm disable-user --user 0 com.sec.enterprise.knox.attestation
+2	adb shell pm disable-user --user 0 com.sec.enterprise.knox.cloudmdm.smdms
+2	adb shell pm disable-user --user 0 com.sec.knox.kccagent
+12	adb shell pm help` for more options.)
+2	adb shell pm list packages
+2	adb shell pm path
+2	adb shell pm uninstall --user 0 com.knox.vpn.proxyhandler
+2	adb shell pm uninstall --user 0 com.postmates.android.merchant
+2	adb shell pm uninstall --user 0 com.samsung.android.knox.containeragent
+2	adb shell pm uninstall --user 0 com.samsung.android.knox.containercore
+2	adb shell pm uninstall --user 0 com.samsung.knox.securefolder
+2	adb shell pm uninstall --user 0 com.sec.enterprise.knox.cloudmdm.smdms
+2	adb shell pm uninstall --user 0 com.sec.knox.foldercontainer
+2	adb shell pm uninstall --user 0 com.sec.knox.kccagent
+2	adb shell pm uninstall --user 0 com.sec.knox.knoxsetupwizardclient
+2	adb shell pm uninstall --user 0 com.sec.knox.switcher
+12	adb shell pm uninstall -k
+2	adb shell pm uninstall -k %s
+2	adb shell pm uninstall -k --user -0 com.sec.android.AutoPreconfig
+2	adb shell pm uninstall -k --user 0 com.google.android.apps.work.oobconfig
+2	adb shell pm uninstall -k --user 0 com.samsung.android.aircommandmanager
+2	adb shell pm uninstall -k --user 0 com.samsung.android.cidmanager
+2	adb shell pm uninstall -k --user 0 com.sec.android.CarrierCodeChanger
+2	adb shell pm uninstall com.samsung.android.FactoryTestLauncher
+3	adb shell ps -A
+2	adb shell rm /data/local/tmp/athun
+4	adb shell service call iphonesubinfo 1
+4	adb shell service call iphonesubinfo 1 s16 com.android.shell
+2	adb shell service call iphonesubinfo 15
+4	adb shell service call iphonesubinfo 2
+4	adb shell setprop sys.powerctl shutdown
+2	adb shell settings put  Secure assistant  com.google.android.googlequicksearchbox/com.google.android.voiceinteraction.GsaVoiceInteractionService > /dev/null 2>
+2	adb shell settings put secure user_setup_complete 1
+2	adb shell su -c  chmod 0400 /efs/root/data/SLB.bin
+2	adb shell su -c  echo 00000000 > /efs/root/data/SLB.bin
+2	adb shell su -c  mv /efs/root/data/SLB.bin /efs/root/data/SLB.bin.bak
+2	adb shell su -c ' echo 00000000 > /efs/root/data/SLB.bin
+2	adb shell su -c ' mv /efs/root/data/SLB.bin /efs/root/data/SLB.bin.bak
+2	adb shell su -c ./data/local/tmp/trd
+2	adb shell su -c chmod 777 /data/local/tmp/*
+3	adb shell su -c id
+2	adb shell su -c rm -R /data/local/tmp/*
+2	adb shell sync
+14	adb sync
+2	adb uninstall [-k] <package> - remove this app package from the device
+2	adb uninstall com.octoplusbox.octosprint
+5	adb wait-for-device
+2	adb wait-for-device          - block until device is online
+2	adb wait-for-device push
+5	adb wait-for-device shell
+4	adb wait-for-device shell -tt
+4	adb wait-for-device shell chmod 777 /data/local/tmp/1.apk
+2	adb wait-for-device shell getprop knox.kg.state
+4	adb wait-for-device shell getprop sys.boot_completed
+4	adb wait-for-device shell getprop sys.usb.state
+4	adb wait-for-device shell pm install -r -d /data/local/tmp/1.apk
+118	adb.exe
+4	adb.exe  -s R5CY625NBYN shell getprop ro.build.version.release
+4	adb.exe  -s R5CY625NBYN shell getprop ro.product.model
+2	adb.exe  push C:/Users/pc5/AppData/Local/Temp/QTMPX142_1749912_63418355 /data/local/tmp/athun
+1	adb.exe  shell chmod 777 /data/local/tmp/athun

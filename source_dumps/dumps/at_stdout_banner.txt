@@ -1,0 +1,19 @@
+
+****************************************************
+******        HUNTER-UNLOCKER TOOL 2025       ******
+******                                        ******
+******           SAM RIL  V2.3 2025           ******
+******                                        ******
+****************************************************
+
+ [+] Product Model  : SM-G715U1
+ [+] Product CPU    : exynos9611
+ [+] Product Name   : samsung
+ [+] Serial Number  : R5CRC37NYRZ
+ [+] Security patch : 2022-12-01
+
+
+[*] Generate Authenticator 
+
+Authorisation Token:84DkqA8ARrOxvip8HTGfMzEjOt5IFK0BGO1McwLJBURWlreGDY9C0B9OCm25qcwfff6kc9pHtnHKMiVhq0YAN/usLVYuJRNVXncE6raVOQWN8MH0fYVVC0aiINKDJUWOrD1cNHjEw/NhRNWyBZ5B8GGPCFo807AcqqwyLzXFVU+YYIAw7dJgRr0rpvomeaQsMpcfQ5MB+k0JMu0c+qxEMdTH8iOeBPAO+07K8SHqcjfjMFh8nH0cBeZmDOVaHg9/x1LudZCbkFjT60xxrfDoaXw/Km2Mtaq5A4hyrIOM43U=
+RESPONSE : 

