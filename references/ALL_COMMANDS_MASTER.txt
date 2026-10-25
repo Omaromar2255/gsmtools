@@ -458,3 +458,56 @@ ALL_COMMANDS_MASTER — كل الأوامر/النصوص المستخرجة (AT 
 [WRITE][STD]	adb shell content insert --uri content://telephony/carriers --bind numeric:s:"<MCCMNC>" ...	إضافة APN بـMCC/MNC
 [NOTE]	لا يوجد أمر AT معياري لتغيير MCC/MNC المطبوع في الشريحة (IMSI)
 [NOTE]	SETSPR/GETSPR لم يُرصدا في سجلات L24 — دليلهما AT + استخراج Q-Unlocker
+
+### RIL LIBRARIES — libril.so / libsecril-client.so / rild / /dev nodes
+# المصادر: AT (Ghidra/raw) + at-bridge + KEY-Tool.DMP + SimUnlockerPro.DMP + Q-Unlocker
+# الوسوم: [LIB] مكتبة | [DEV] عقدة /dev | [SOCKET] سوكيت rild | [AT-BIN] داخل AT | [AT-BRIDGE] مصدر at-bridge | [TOOL] نص أداة | [MSG] رسالة AT | [FLOW] خطوة | [NOTE] حد
+
+[RIL][LIB]	lib/arm64-v8a/libril.so	KEY-Tool.DMP CD@0x2fdacc3 csize=343,768 usize=351,901 CRC=0x3b4f66b3 — مكتبة RIL خاصة بالأداة داخل APK
+[RIL][LIB]	lib/armeabi-v7a/libril.so	SimUnlockerPro.DMP @0x3ab1989/0x3b09a9f/0x52b2ebb — نسخة 32-بت (توقيع سامسونج ANDROID.RSAPK)
+[RIL][LIB]	libsecril-client.so	KEY-Tool.DMP @0x68a2222 (DT_NEEDED) + AT's send_recv_cmd + at-bridge CH_SECRIL_LIB — عميل RIL سامسونج
+[RIL][LIB]	libsec-ril.so	KEY-Tool.DMP @0x68a2236 (DT_NEEDED) — مكتبة RIL للمودم
+[RIL][LIB]	libplayservice.so	KEY-Tool.DMP @0x16ba75e "Permission denied" — مساعدة لوكيل KEY-Tool
+[RIL][LIB]	libandroid_runtime.so / libnativehelper.so / libbinder.so / libutils.so	KEY-Tool.DMP NEEDED — JNI/ART (تُحمّل مع العميل)
+[RIL][DEV]	/dev/umts_ipc0	at-bridge IPC_NODES[0] — IPC خام (أولوية 1)
+[RIL][DEV]	/dev/umts_ipc1 / /dev/umts_rfs0 / /dev/diag	at-bridge IPC_NODES — IPC خام
+[RIL][DEV]	/dev/umts_atc0	at-bridge AT_NODES[0] — AT نصي (أولوية 3)
+[RIL][DEV]	/dev/umts_atc1 / /dev/umts_at0 / /dev/at_distributor / /dev/at_distributor0	at-bridge AT_NODES
+[RIL][DEV]	/dev/smd11 / /dev/smd0 / /dev/smd7	at-bridge — SMD (Qualcomm)
+[RIL][DEV]	/dev/ttyGS0 / /dev/ttyACM0 / /dev/ttyUSB0	at-bridge — USB TTY
+[RIL][SOCKET]	/dev/socket/rild	at-bridge RILD_SOCKETS[0] — سوكيت rild (أولوية 2)
+[RIL][SOCKET]	/dev/socket/rild-oem / rild-debug / rild2	at-bridge RILD_SOCKETS
+[RIL][SOCKET]	/dev/socket/qmux_radio/qmux_client_socket0	at-bridge — Qualcomm QMUX
+[RIL][AT-BIN]	send_recv_cmd	Ghidra 0x2aa058 key=0xed — الرمز المطلوب من libsecril-client.so
+[RIL][AT-BIN]	echo  | /system/bin/toybox nc 127.0.0.1 2600	Ghidra 0x2aa308+0x2aa310 — قناة port 2600
+[RIL][MSG]	[-] Failed to load library %s: %s	Ghidra 0x2aa030 key=0x18
+[RIL][MSG]	[i] Found 'send_recv_cmd' in %s.	Ghidra 0x2aa0b0 key=0xf8
+[RIL][MSG]	[-] Library %s did not return a valid response (code: %d, len: %d).	Ghidra 0x2aa0e0 key=0x1a
+[RIL][MSG]	[SUCCESS] Challenge key (CALC) obtained from %s: %s	Ghidra 0x2aa181 key=0x89
+[RIL][MSG]	[SECURE] Encrypted CALC for use: %s	Ghidra 0x2aa1c0 key=0x6d
+[RIL][AT-BRIDGE]	CH_SECRIL_LIB	at-bridge سطر 35 — libsecril-client.so (الأقوى والأضمن)
+[RIL][AT-BRIDGE]	CH_RILD_PARCEL	at-bridge — /dev/socket/rild مع Parcel
+[RIL][AT-BRIDGE]	CH_DEV_IPC_RAW	at-bridge — /dev/umts_ipc0 خام
+[RIL][AT-BRIDGE]	CH_DEV_AT_TTY	at-bridge — /dev/umts_atc0 نصي
+[RIL][AT-BRIDGE]	RIL_REQUEST_OEM_HOOK_RAW = 59	معرف حزمة Parcel
+[RIL][AT-BRIDGE]	setprop ctl.stop ssud; id	أمر مصعد port 2600
+[RIL][AT-BRIDGE]	-c / -a / -x / -s / -l / -d / -p / -v	CLI at-bridge
+[RIL][AT-BRIDGE]	CSC: / AT: / HEX: / SCAN / STATUS / LOCKS / RECONNECT / MODE:AT / MODE:IPC / AUTH: / INFO / EXIT	تفاعلي at-bridge
+[RIL][TOOL]	HUN_RIL_SAM2025_06_ALL_noapparm64v8a	Q-Unlocker — وحدة arm64
+[RIL][TOOL]	HUN_RIL_SAM2025_06_ALL_noapparmiv7a	Q-Unlocker — وحدة armv7
+[RIL][TOOL]	Hunter_Ril_Sam_spr_2020armiv7a	Q-Unlocker — وحدة SPR
+[RIL][TOOL]	ATRIL / ATRIL64 / NoAppRil	SimUnlockerPro.DMP — أدوات RIL
+[RIL][TOOL]	RIL202310 / RIL202409 / JDMRIL2023	SimUnlockerPro.DMP — وحدات سنوية
+[RIL][TOOL]	AT_SamRilTool_V3_arm64_KT / DAT_SamRilTool_V3_KT	KEY-Tool — أدوات RIL
+[RIL][TOOL]	KEYTool_RIL_agent_32bit.elf	KEY-Tool.DMP @0x689f91e — ELF 32-bit ARM 45,708B — مستخرج
+[RIL][TOOL]	classes.dex / sim_android_1.5.apk / repaircal.apk / Ekbase.apk / DM.apk	SimUnlockerPro.DMP — APK/DEX
+[RIL][FLOW]	getprop ro.product.cpu.abi → اختيار وحدة RIL → push athun → chmod 0777 → AKSEEDNO → قناة RIL → قراءة/كتابة → exit → rm
+[RIL][FLOW]	adb install -r -g <apk> → System.loadLibrary("ril")	تثبيت APK وتحميل libril.so
+[RIL][NOTE]	AT has 0 dlopen/dlsym imports (112 PLT + 113 dynsym verified)
+[RIL][NOTE]	AT uses popen(8) + system(77) + fgets(5) + getline(2) for shell commands
+[RIL][NOTE]	AT's dl_iterate_phdr(1 @0x1654d8) = unwinder only; fopen(1 @0x4a53c) = anti-debug only
+[RIL][NOTE]	AT is ET_DYN (PIE) with .preinit_array — loadable as lib or exe
+[RIL][NOTE]	No "libril.so" string inside AT (0/141)
+[RIL][NOTE]	Library loading inside AT NOT fully reversed (obfuscated C++)
+[RIL][NOTE]	lib/arm64-v8a/libril.so (351,901B) inside ZIP not extracted yet
+[RIL][NOTE]	FALSE POSITIVE: "rild" in SimUnlockerPro = Turkish locale "gösterildikd"

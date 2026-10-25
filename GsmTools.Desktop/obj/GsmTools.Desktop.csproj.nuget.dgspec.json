@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "c:\\Users\\pc5\\Documents\\GitHub\\gsmtools\\GsmTools.Desktop\\GsmTools.Desktop.csproj": {}
+    "C:\\Users\\pc5\\Documents\\GitHub\\gsmtools\\GsmTools.Desktop\\GsmTools.Desktop.csproj": {}
   },
   "projects": {
-    "c:\\Users\\pc5\\Documents\\GitHub\\gsmtools\\GsmTools.Desktop\\GsmTools.Desktop.csproj": {
+    "C:\\Users\\pc5\\Documents\\GitHub\\gsmtools\\GsmTools.Desktop\\GsmTools.Desktop.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "c:\\Users\\pc5\\Documents\\GitHub\\gsmtools\\GsmTools.Desktop\\GsmTools.Desktop.csproj",
+        "projectUniqueName": "C:\\Users\\pc5\\Documents\\GitHub\\gsmtools\\GsmTools.Desktop\\GsmTools.Desktop.csproj",
         "projectName": "GsmTools.Desktop",
-        "projectPath": "c:\\Users\\pc5\\Documents\\GitHub\\gsmtools\\GsmTools.Desktop\\GsmTools.Desktop.csproj",
+        "projectPath": "C:\\Users\\pc5\\Documents\\GitHub\\gsmtools\\GsmTools.Desktop\\GsmTools.Desktop.csproj",
         "packagesPath": "C:\\Users\\pc5\\.nuget\\packages\\",
-        "outputPath": "c:\\Users\\pc5\\Documents\\GitHub\\gsmtools\\GsmTools.Desktop\\obj\\",
+        "outputPath": "C:\\Users\\pc5\\Documents\\GitHub\\gsmtools\\GsmTools.Desktop\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -48,6 +48,12 @@
       "frameworks": {
         "net8.0-windows7.0": {
           "targetAlias": "net8.0-windows",
+          "dependencies": {
+            "System.IO.Ports": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            }
+          },
           "imports": [
             "net461",
             "net462",

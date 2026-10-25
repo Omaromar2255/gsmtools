@@ -1,0 +1,219 @@
+# MODEM / PORT / SAMSUNG APPS / COMMAND PASSING — قائمة مسطحة قابلة للـgrep
+# التاريخ: 24/10/2026
+# الوسوم:
+#   [AT-OBS]     أمر AT مرصود
+#   [AT-BIN]     نص داخل ملف AT (Ghidra address)
+#   [AT-BRIDGE]  معرّف في at-bridge
+#   [OBS]        مرصود في سجلات L24
+#   [STD]        معياري/قياسي
+#   [VERIFY]     التحقق من المودم
+#   [PORT]       فحص/فتح منفذ
+#   [SAMSUNG]    تطبيق سامسونج
+#   [PASS]       تمرير أمر للمودم
+#   [REBOOT]     إعادة تشغيل/تحكم
+#   [EFS]        نظام ملفات EFS
+#   [KEYEVENT]   زر إدخال
+#   [FLOW]       خطوة في تسلسل
+#   [NOTE]       ملاحظة
+
+# ============================================================
+# 1) التحقق من المودم (أوامر AT)
+# ============================================================
+[AT-OBS x35][VERIFY]	AT+DEVCONINFO	معلومات المودم: MN/BASE/VER/MNC/MCC/PRD/SN/IMEI
+[AT-OBS x16][VERIFY]	AT+SVCIFPGM=1,1	Info 2
+[AT-OBS x34][VERIFY]	AT+CIMI	IMSI — التأكد من قراءة الشريحة
+[AT-OBS x29][VERIFY]	AT+CPIN?	حالة الشريحة (READY/PIN/PUK/NOT INSERTED)
+[AT-OBS x38][VERIFY]	AT+CSQ	شدة الإشارة
+[AT-OBS x27][VERIFY]	AT+CFUN?	حالة الراديو (1=full, 4=airplane)
+[AT-OBS x36][VERIFY]	AT+CSCS	مجموعة المحارف
+[AT-BRIDGE][VERIFY]	AT+CLCK="PN",2	فحص Network Lock
+[AT-BRIDGE][VERIFY]	AT+CLCK="PU",2	فحص Network Subset Lock
+[AT-BRIDGE][VERIFY]	AT+CLCK="PP",2	فحص Service Provider Lock
+[AT-BRIDGE][VERIFY]	AT+CLCK="PC",2	فحص Corporate Lock
+# ============================================================
+# 2) التحقق من المودم (at-bridge + ADB)
+# ============================================================
+[AT-BRIDGE][VERIFY]	SCAN	فحص كل عقد المودم والسوكيتات
+[AT-BRIDGE][VERIFY]	STATUS	حالة الجهاز + القناة + أقفال SIM
+[AT-BRIDGE][VERIFY]	LOCKS / SIMLOCK	فحص أقفال SIM (CPIN + CLCK)
+[AT-BRIDGE][VERIFY]	INFO	معلومات مختصرة
+[AT-BRIDGE][VERIFY]	-s	CLI: فحص القنوات
+[AT-BRIDGE][VERIFY]	-l	CLI: فحص أقفال SIM
+[OBS x3][VERIFY]	adb shell ps -A	فحص العمليات
+[OBS x11][VERIFY]	adb shell getprop gsm.sim.state	حالة الشريحة
+[OBS x16][VERIFY]	adb shell getprop gsm.network.type	نوع الشبكة
+[OBS x12][VERIFY]	adb shell getprop gsm.version.baseband	إصدار المودم
+[OBS x11][VERIFY]	adb shell getprop sys.usb.state	حالة USB
+[OBS x49][VERIFY]	adb shell getprop ro.product.model	موديل الجهاز
+[OBS x4][VERIFY]	adb wait-for-device shell getprop sys.boot_completed	حالة الإقلاع
+[OBS x4][VERIFY]	adb wait-for-device shell getprop sys.usb.state	حالة USB بعد الإقلاع
+[OBS x2][VERIFY]	adb shell getprop knox.kg.state	حالة Knox
+[OBS x2][VERIFY]	adb shell logcat -b radio -d	قراءة سجل الراديو
+[OBS x2][VERIFY]	adb shell logcat -b radio -d | grep ': +.:.,' | tail -1	قراءة آخر رد
+[OBS x4+2][VERIFY]	adb shell logcat -b radio -c	مسح سجل الراديو
+[OBS x2][VERIFY]	adb shell logcat -b all -c	مسح كل السجلات
+[OBS x7][VERIFY]	adb shell service call iphonesubinfo 1	IMEI
+[OBS x4][VERIFY]	adb shell service call iphonesubinfo 1 s16 com.android.shell	IMEI مع caller
+[OBS x3][VERIFY]	adb shell pm list packages	قائمة الحزم
+[OBS x2][VERIFY]	adb shell pm path	مسار حزمة
+# ============================================================
+# 3) فحص المنافذ المفتوحة
+# ============================================================
+[OBS x4][PORT]	adb shell echo id | toybox nc localhost 2600	فحص البورت 2600 — إذا رجع uid=1000 فالمنفذ مفتوح
+[STD][PORT]	adb shell netstat -tlnp	فحص كل المنافذ
+[STD][PORT]	adb shell ss -tlnp	فحص كل المنافذ
+[STD][PORT]	adb shell cat /proc/net/tcp	فحص منافذ TCP
+[STD][PORT]	adb shell "echo id > /dev/tcp/127.0.0.1/2600"	فحص بديل للبورت 2600
+[AT-BRIDGE][PORT]	setprop ctl.stop ssud; id	أمر فحص البورت 2600 من at-bridge
+# ============================================================
+# 4) فتح المنفذ 2600 — كل الطرق
+# ============================================================
+# === الطريقة 1: audiocoredebug (الأساسية) ===
+[AT-BIN 0x2aa6d0][PORT]	settings put system screen_off_timeout 600000 > /dev/null 2>&1	منع سكون الشاشة
+[AT-BIN 0x2aa710][PORT]	settings put system assistant com.sec.android.app.audiocoredebug/...AudioAdbShellActivity > /dev/null 2>&1	تعيين المساعد (system)
+[AT-BIN 0x2aa7a0][PORT]	settings put Secure assistant com.sec.android.app.audiocoredebug/...AudioAdbShellActivity > /dev/null 2>&1	تعيين المساعد (Secure)
+[AT-BIN 0x2aa830][PORT]	settings put global function_key_config_doublepress_value com.sec.android.app.audiocoredebug/...AudioAdbShellActivity > /dev/null 2>&1	تعيين زر مزدوج
+[AT-BIN 0x2aa920][PORT]	input keyevent 219 > /dev/null 2>&1	استدعاء المساعد (KEYCODE_ASSIST)
+[AT-BIN 0x2aa980][PORT]	uiautomator dump /sdcard/window_dump.xml > /dev/null 2>&1	التقاط الواجهة
+[AT-BIN 0x2aa9c0][PORT]	cat /sdcard/window_dump.xml	قراءة الواجهة
+[AT-BIN 0x2aa590][PORT]	regex: <node[^>]*text="EXECUTE"[^>]*bounds="..."	البحث عن زر EXECUTE
+[AT-BIN 0x2aa5e8][PORT]	input tap <x> <y>	الضغط على زر EXECUTE
+[AT-BIN 0x2aa9e0][PORT]	input text 'toybox nc -s 127.0.0.1 -p 2600 -L /system/bin/sh'	كتابة أمر nc
+[AT-BIN 0x2aaa30][PORT]	input keyevent 61 > /dev/null 2>&1	TAB — تنقل للحقل التالي
+[AT-BIN 0x2aaa60][PORT]	input keyevent 66 > /dev/null 2>&1	ENTER — تنفيذ
+[AT-BIN 0x2aa600][PORT]	regex: <node[^>]*resource-id="android:id/aerr_wait"[^>]*bounds="..."	فحص خطأ التطبيق
+[AT-BIN 0x2aa950][PORT]	rm -rf /sdcard/window_dump.xml > /dev/null 2>&1	تنظيف
+[AT-BIN 0x2aab30][PORT]	cmd wifi set-wifi-enabled disabled > /dev/null 2>&1	إغلاق wifi
+[AT-BIN 0x2aab70][PORT]	input keyevent 82 > /dev/null 2>&1	فتح القائمة
+[AT-BIN 0x2aa6a0][PORT]	input keyevent 3 > /dev/null 2>&1	الرئيسية
+# === الطريقة 2: FactoryTestLauncher ===
+[AT-BIN 0x2aaa90][PORT]	pm clear com.samsung.android.FactoryTestLauncher > /dev/null 2>&1	تهيئة FactoryTestLauncher
+[AT-BIN 0x2aaaf0][PORT]	am start -a android.settings.SETTINGS > /dev/null 2>&1	فتح الإعدادات (شرط مسبق)
+[AT-BIN 0x2aaba0][SAMSUNG]	com.samsung.android.FactoryTestLauncher	اسم الحزمة داخل AT
+# === الطريقة 3: IOTHiddenMenu ===
+[AT-BIN 0x2aa390][PORT]	echo "am start -n com.sec.hiddenmenu/.IOTHiddenMenu -e 7267864872 72678647376477466 > /dev/null 2>&1	فتح القائمة الخفية عبر nc
+# === الطريقة 4: مباشرة (root) ===
+[STD][PORT]	adb shell su -c 'toybox nc -s 127.0.0.1 -p 2600 -L /system/bin/sh'	فتح مباشر بـ root
+[OBS x2][PORT]	adb shell su -c id	فحص root
+# === الطريقة 5: PreconfigActivity (Base64) ===
+[OBS x2][PORT]	adb shell echo ZWNobyBhbSBzdGFydCAtbiBjb20uc2Ftc3VuZy5hbmRyb2lkLmNpZG1hbmFnZXIv...	Base64 → echo am start -n com.samsung.android.cidmanager/.modules.preconfig.PreconfigActivity
+# === الطريقة 6: Shizuku ===
+[OBS x1][PORT]	adb shell am start -n moe.shizuku.privileged.api/moe.shizuku.manager.MainActivity	فتح Shizuku
+[OBS x1][PORT]	adb shell pm grant com.cdmayemen.volte moe.shizuku.manager.permission.API_V23	منح إذن Shizuku
+# === الاستعادة ===
+[OBS x2][PORT]	adb shell settings put  Secure assistant  com.google.android.googlequicksearchbox/...GsaVoiceInteractionService > /dev/null 2>&1	استعادة المساعد الأصلي
+[AT-BIN 0x2aa8e0][PORT]	pm clear com.sec.android.app.audiocoredebug > /dev/null 2>&1	مسح audiocoredebug
+[OBS x2][PORT]	adb shell settings put secure user_setup_complete 1	إكمال الإعداد
+# ============================================================
+# 5) تمرير الأوامر للمودم
+# ============================================================
+[AT-BIN 0x2aa308+0x2aa310][PASS]	echo '<cmd>' | /system/bin/toybox nc 127.0.0.1 2600 > /dev/null 2>&1	الطريقة الأساسية داخل AT
+[STD][PASS]	echo 'AT+DEVCONINFO' > /dev/umts_atc0	كتابة مباشرة على عقدة AT
+[AT-BRIDGE][PASS]	AT:<CMD>	إرسال أمر AT عبر at-bridge
+[AT-BRIDGE][PASS]	HEX:<DATA>	إرسال إطار IPC hex
+[AT-BRIDGE][PASS]	CSC:<CODE>	تغيير CSC (5 حزم IPC)
+[AT-BRIDGE][PASS]	RIL_REQUEST_OEM_HOOK_RAW = 59	معرف Parcel لسوكيت rild
+[AT-BIN 0x2aa058][PASS]	send_recv_cmd	الرمز من libsecril-client.so
+[STD][PASS]	setprop ctl.stop ssud; id	أمر shell عبر البورت 2600
+# ============================================================
+# 6) تطبيقات سامسونج
+# ============================================================
+[SAMSUNG]	com.sec.android.app.audiocoredebug	فتح shell — AT 0x2aa670 + 7 أوامر settings/input
+[SAMSUNG]	com.samsung.android.FactoryTestLauncher	قائمة المصنع — AT 0x2aaba0
+[SAMSUNG]	com.sec.hiddenmenu	قائمة خفية — AT 0x2aa390 (كود: 7267864872)
+[SAMSUNG]	com.samsung.android.cidmanager	تغيير CSC — PreconfigActivity (Base64)
+[SAMSUNG]	com.samsung.rms.retailagent.global	فحص/إدارة — AT 0x2aa4e0
+[SAMSUNG]	com.sdet.fotaagent	فحص — AT 0x2aa510
+[SAMSUNG]	com.skatd.unlock	فحص: pm list packages | grep — AT 0x2aa530
+[SAMSUNG]	KEYTool.SRV4	pm path — PowerShell observed
+[OBS x2][SAMSUNG]	pm uninstall -k --user -0 com.sec.android.AutoPreconfig	إزالة preconfig
+[OBS x2][SAMSUNG]	pm uninstall -k --user 0 com.sec.android.CarrierCodeChanger	إزالة مغيّر كود
+[OBS x2][SAMSUNG]	pm uninstall com.samsung.android.FactoryTestLauncher	إزالة
+[OBS x2][SAMSUNG]	pm uninstall -k --user 0 com.samsung.android.aircommandmanager	إزالة
+[OBS x2][SAMSUNG]	pm uninstall -k --user 0 com.samsung.android.cidmanager	إزالة CID
+# === Knox (تعطيل/إزالة) ===
+[OBS x2][SAMSUNG]	pm uninstall --user 0 com.sec.knox.knoxsetupwizardclient	إزالة Knox wizard
+[OBS x2][SAMSUNG]	pm uninstall --user 0 com.sec.knox.foldercontainer	إزالة
+[OBS x2][SAMSUNG]	pm uninstall --user 0 com.sec.knox.kccagent	إزالة
+[OBS x2][SAMSUNG]	pm uninstall --user 0 com.sec.knox.switcher	إزالة
+[OBS x2][SAMSUNG]	pm uninstall --user 0 com.samsung.knox.securefolder	إزالة مجلد آمن
+[OBS x2][SAMSUNG]	pm uninstall --user 0 com.samsung.android.knox.containeragent	إزالة
+[OBS x2][SAMSUNG]	pm uninstall --user 0 com.samsung.android.knox.containercore	إزالة
+[OBS x2][SAMSUNG]	pm uninstall --user 0 com.sec.enterprise.knox.cloudmdm.smdms	إزالة MDM
+[OBS x2][SAMSUNG]	pm uninstall --user 0 com.knox.vpn.proxyhandler	إزالة VPN
+[OBS x2][SAMSUNG]	pm uninstall --user 0 com.postmates.android.merchant	إزالة
+[OBS x2][SAMSUNG]	pm uninstall -k --user 0 com.google.android.apps.work.oobconfig	إزالة work config
+[OBS x2][SAMSUNG]	pm disable-user --user 0 com.samsung.knox.keychain	تعطيل
+[OBS x2][SAMSUNG]	pm disable-user --user 0 com.samsung.knox.securefolder.setuppage	تعطيل
+[OBS x2][SAMSUNG]	pm disable-user --user 0 com.sec.enterprise.knox.attestation	تعطيل
+[OBS x2][SAMSUNG]	pm disable-user --user 0 com.absolute.android.agent	تعطيل
+[OBS x2][SAMSUNG]	pm disable-user --user 0 com.planetcellinc.ressvc	تعطيل
+[OBS x2][SAMSUNG]	pm clear --user 0 com.sec.knox.knoxsetupwizardclient	مسح
+[OBS x2][SAMSUNG]	am force-stop com.sec.knox.knoxsetupwizardclient	إيقاف
+# === أخرى ===
+[OBS x2][SAMSUNG]	am broadcast -a com.cdmayemen.volte.ACTION_CONFIG --es config 1,e	VoLTE config 1
+[OBS x2][SAMSUNG]	am broadcast -a com.cdmayemen.volte.ACTION_CONFIG --es config 2,e	VoLTE config 2
+[OBS x2][SAMSUNG]	am start -n com.cdmayemen.volte/.MainActivity	فتح VoLTE app
+[OBS x2][SAMSUNG]	am start -n com.octoplusbox.octosprint/...MainActivity	فتح Octoplus
+[OBS x2][SAMSUNG]	am start -n com.google.android.gsf.login/LoginActivity	فتح Google login
+[OBS x2][SAMSUNG]	am start com.lge.lgcontentsetting/...LGContentSettingsActivity	فتح LG settings
+# ============================================================
+# 7) إعادة التشغيل والتحكم
+# ============================================================
+[AT-OBS x13][REBOOT]	AT+BKREBOOT=1	إعادة تشغيل المودم
+[AT-OBS x4][REBOOT]	AT+NBOOT	إقلاع عادي
+[AT-OBS x13][REBOOT]	AT%USB=adb,mtp	تبديل USB إلى ADB+MTP
+[OBS x6][REBOOT]	adb reboot	إعادة تشغيل
+[OBS x2][REBOOT]	adb reboot bootloader	إقلاع bootloader
+[OBS x2][REBOOT]	adb reboot download	وضع التنزيل (Odin)
+[OBS x4][REBOOT]	adb reboot debug0x4948	debug بكود 0x4948
+[OBS x2][REBOOT]	adb reboot debug0x4f4c	debug بكود 0x4f4c
+[OBS x2][REBOOT]	adb reboot cpdebug0x5500	CP debug بكود 0x5500
+[OBS x2][REBOOT]	adb reboot sideload	sideload
+[OBS x2][REBOOT]	adb reboot sideload-auto-reboot	sideload + auto
+[OBS x2][REBOOT]	adb reboot-bootloader	bootloader (نمط قديم)
+[STD][REBOOT]	svc power stayon true	منع السكون — KEY-Tool
+# ============================================================
+# 8) أوامر EFS / SLB (مرصودة — تتطلب root)
+# ============================================================
+[OBS x2][EFS]	adb shell su -c 'mv /efs/root/data/SLB.bin /efs/root/data/SLB.bin.bak'	نسخ احتياطي SLB
+[OBS x2][EFS]	adb shell su -c 'echo 00000000 > /efs/root/data/SLB.bin'	فك قفل SIM (صفر)
+[OBS x2][EFS]	adb shell su -c 'chmod 0400 /efs/root/data/SLB.bin'	حماية الملف
+[OBS x2][EFS]	adb shell su -c ./data/local/tmp/trd	تشغيل trd
+[OBS x2][EFS]	adb shell su -c chmod 777 /data/local/tmp/*	تفعيل الكل
+[OBS x2][EFS]	adb shell su -c rm -R /data/local/tmp/*	حذف الكل
+# ============================================================
+# 9) جدول keyevent
+# ============================================================
+[KEYEVENT 3]	input keyevent 3	KEYCODE_HOME — الرئيسية
+[KEYEVENT 4]	input keyevent 4	KEYCODE_BACK — الرجوع
+[KEYEVENT 61]	input keyevent 61	KEYCODE_TAB — تنقل
+[KEYEVENT 66]	input keyevent 66	KEYCODE_ENTER — تنفيذ
+[KEYEVENT 82]	input keyevent 82	KEYCODE_MENU — القائمة
+[KEYEVENT 219]	input keyevent 219	KEYCODE_ASSIST — المساعد (يفتح audiocoredebug)
+[OBS x16]	input keyevent KEYCODE_HOME	الرئيسية (مرصود)
+# ============================================================
+# 10) التسلسل الكامل (المرجع)
+# ============================================================
+[FLOW]	1) adb devices + getprop sys.usb.state	التحقق من الاتصال
+[FLOW]	2) ps -A + getprop + logcat -c	فحص الجهاز
+[FLOW]	3) settings put assistant audiocoredebug	فتح المنفذ 2600
+[FLOW]	4) input keyevent 219 → uiautomator → tap EXECUTE → input text nc → ENTER
+[FLOW]	5) echo id | nc localhost 2600	التحقق من المنفذ
+[FLOW]	6) push athun + chmod 0777	دفع الأداة
+[FLOW]	7) AKSEEDNO → DEVCONINFO → GETSPR → SETSPR → exit	العمليات
+[FLOW]	8) rm athun + logcat -c	التنظيف
+[FLOW]	9) settings put assistant google...	الاستعادة
+[FLOW]	10) pm clear audiocoredebug + user_setup_complete 1	إعادة الوضع
+[FLOW]	11) adb reboot	إعادة التشغيل
+# ============================================================
+# 11) ملاحظات
+# ============================================================
+[NOTE]	Port 2600 = مصعد الصلاحيات (UID 1000) — يتطلب فتحه قبل كل عملية
+[NOTE]	audiocoredebug يعمل بصلاحية system (UID 1000) وليس root (UID 0)
+[NOTE]	SLB.bin = SIM Lock Byte في /efs/root/data/ — فك القفل بصفر مباشر
+[NOTE]	PreconfigActivity في CID Manager يغيّر CSC بدون أوامر AT
+[NOTE]	knox.kg.state يحدد ما إذا كان Knox Guard مقفلاً (RECHECK/LOCKED/UNLOCKED)
+[NOTE]	input keyevent 219 = KEYCODE_ASSIST — يفتح المساعد المحدد في settings
+[NOTE]	uiautomator dump يلتقط XML للواجهة → استخراج إحداثيات أزرار
+[NOTE]	AT يبني: echo '<payload>' | toybox nc 127.0.0.1 2600 — عبر popen

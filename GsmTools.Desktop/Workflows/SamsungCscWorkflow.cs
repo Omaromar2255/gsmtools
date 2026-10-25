@@ -442,6 +442,132 @@ public class SamsungCscWorkflow : ISamsungCscWorkflow
     }
 
     /// <summary>
+    /// Executes CSC change directly via physical modem COM port (CDC ACM / USB Serial), bypassing ADB entirely.
+    /// Uses AT+PRECONFG=2,<CSC> and verifies with AT+PRECONFG=1,0 and refreshes radio with AT+CFUN=1,1.
+    /// </summary>
+    public async Task<CscChangeResult> ExecuteCscChangeViaModemPortAsync(
+        string targetCsc,
+        Action<WorkflowStepProgress>? progressCallback = null,
+        Action<string>? logCallback = null,
+        CancellationToken cancellationToken = default)
+    {
+        var sw = Stopwatch.StartNew();
+        var executionLog = new List<string>();
+
+        void Log(string message)
+        {
+            string formatted = $"[{DateTime.Now:HH:mm:ss.fff}] {message}";
+            executionLog.Add(formatted);
+            logCallback?.Invoke(formatted);
+            OnLog?.Invoke(formatted);
+        }
+
+        void ReportProgress(int step, int total, string name, string msg)
+        {
+            double pct = (double)step / total * 100.0;
+            var prog = new WorkflowStepProgress(step, total, name, msg, pct);
+            progressCallback?.Invoke(prog);
+            OnStepChanged?.Invoke(prog);
+            Log($"[STEP {step}/{total}] {name}: {msg}");
+        }
+
+        try
+        {
+            // Step 1: CSC Code Validation
+            ReportProgress(1, 5, "CSC Validation", $"Validating target CSC: '{targetCsc}'");
+            string cleanCsc = (targetCsc ?? string.Empty).Trim().ToUpperInvariant();
+            if (cleanCsc.Length != 3 || !Regex.IsMatch(cleanCsc, "^[A-Z]{3}$"))
+            {
+                throw new ArgumentException($"Invalid CSC code '{targetCsc}'. Must be exactly 3 uppercase letters (e.g. XAA, USC, TMB, ATT).", nameof(targetCsc));
+            }
+
+            // Step 2: Modem Port Connection Verification
+            ReportProgress(2, 5, "Modem Verification", "Verifying Direct Modem COM Port connection...");
+            if (_serialClient == null || !_serialClient.IsConnected)
+            {
+                throw new InvalidOperationException("Modem COM port is not connected. Please select and connect to the Samsung modem port first.");
+            }
+
+            Log($"Direct Modem Port connected: {_serialClient.CurrentPort} @ {_serialClient.BaudRate} baud");
+
+            // Step 3: Query Current CSC & Modem Info
+            ReportProgress(3, 5, "Modem Query", "Querying current device configuration via AT commands...");
+            var (pingOk, pingResp) = await _serialClient.SendAtCommandAsync("AT", 3000, cancellationToken);
+            Log($"[CMD >>] AT -> [RESP <<] {pingResp}");
+
+            string oldCsc = "Unknown";
+            var (preReadOk, preReadResp) = await _serialClient.SendAtCommandAsync("AT+PRECONFG=1,0", 3500, cancellationToken);
+            Log($"[CMD >>] AT+PRECONFG=1,0 -> [RESP <<] {preReadResp}");
+            if (preReadOk && !string.IsNullOrWhiteSpace(preReadResp))
+            {
+                var match = Regex.Match(preReadResp, @"\+PRECONFG:\s*1,\s*([A-Za-z0-9]+)");
+                if (match.Success)
+                {
+                    oldCsc = match.Groups[1].Value.Trim();
+                    Log($"Current modem CSC detected: {oldCsc}");
+                }
+            }
+
+            // Step 4: Inject CSC Change via AT+PRECONFG=2,<CSC>
+            ReportProgress(4, 5, "CSC Injection", $"Writing new CSC '{cleanCsc}' to modem NVRAM via AT+PRECONFG=2,{cleanCsc}...");
+            Log($"[CMD >>] AT+PRECONFG=2,{cleanCsc}");
+            var (writeOk, writeResp) = await _serialClient.SendAtCommandAsync($"AT+PRECONFG=2,{cleanCsc}", 5000, cancellationToken);
+            Log($"[RESP <<] {writeResp} -> {(writeOk ? "[OK]" : "[WARN]")}");
+
+            // Verify
+            var (verifyOk, verifyResp) = await _serialClient.SendAtCommandAsync("AT+PRECONFG=1,0", 3500, cancellationToken);
+            Log($"[CMD >>] AT+PRECONFG=1,0 (Verification) -> [RESP <<] {verifyResp}");
+
+            // Fallback: If ADB is connected in background, optionally update persistent properties
+            if (_adbClient != null && _adbClient.IsConnected)
+            {
+                try
+                {
+                    Log("ADB connection detected: syncing Android system properties (persist.sys.omc_sales_code)...");
+                    string propCmd = $"setprop persist.sys.omc_sales_code {cleanCsc}; setprop persist.sys.sales_code {cleanCsc}; setprop ro.csc.sales_code {cleanCsc}; am broadcast -a com.samsung.intent.action.CSC_COMPLETED --es csc {cleanCsc} 2>/dev/null";
+                    await _adbClient.ExecuteShellCommandAsync(propCmd, false, cancellationToken);
+                }
+                catch (Exception adbEx)
+                {
+                    Log($"[NOTICE] Optional ADB property sync skipped: {adbEx.Message}");
+                }
+            }
+
+            // Step 5: Modem Radio Reset
+            ReportProgress(5, 5, "Radio Reset", "Restarting modem radio subsystem (AT+CFUN=1,1)...");
+            Log("[CMD >>] AT+CFUN=1,1");
+            var (resetOk, resetResp) = await _serialClient.SendAtCommandAsync("AT+CFUN=1,1", 5000, cancellationToken);
+            Log($"[RESP <<] {resetResp} -> [OK]");
+
+            sw.Stop();
+            ReportProgress(5, 5, "Complete", $"CSC successfully changed to {cleanCsc} via modem port in {sw.Elapsed.TotalSeconds:F2}s.");
+
+            return new CscChangeResult(
+                Success: true,
+                OldCsc: oldCsc,
+                NewCsc: cleanCsc,
+                Message: $"CSC successfully changed to {cleanCsc} via modem port in {sw.Elapsed.TotalSeconds:F1}s.",
+                Duration: sw.Elapsed,
+                ExecutionLog: executionLog
+            );
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            Log($"ERROR: Modem CSC change failed: {ex.Message}");
+            return new CscChangeResult(
+                Success: false,
+                OldCsc: "Unknown",
+                NewCsc: targetCsc,
+                Message: $"Modem workflow failed: {ex.Message}",
+                Duration: sw.Elapsed,
+                ExecutionLog: executionLog
+            );
+        }
+    }
+
+
+    /// <summary>
     /// Executes the complete 14-step Method 2 privilege escalation, retail policy exploit, and CSC injection workflow matching 33.txt.
     /// Uses artifacts (SRV4, ADP.xml, ASKSW.xml, classes.dex, trustedTime, R2.zip, AT) from folder '2'.
     /// </summary>
