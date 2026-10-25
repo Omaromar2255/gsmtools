@@ -6,6 +6,10 @@ namespace GsmTools.Desktop.Core;
 
 public record ModemPortInfo(string PortName, string Description)
 {
+    public bool IsSamsungModem =>
+        Description.Contains("SAMSUNG", StringComparison.OrdinalIgnoreCase) ||
+        Description.Contains("Modem", StringComparison.OrdinalIgnoreCase);
+
     public string DisplayName => string.IsNullOrWhiteSpace(Description) ? PortName : $"{PortName} - {Description}";
     public override string ToString() => DisplayName;
 }
@@ -17,7 +21,7 @@ public interface IModemSerialClient : IDisposable
     int BaudRate { get; }
 
     IReadOnlyList<ModemPortInfo> GetAvailablePorts();
-    void Connect(string portName, int baudRate = 115200, int timeoutMs = 3000);
+    bool Connect(string portName, int baudRate = 115200, int timeoutMs = 3000);
     void Disconnect();
 
     Task<(bool Success, string Response)> SendAtCommandAsync(string command, int timeoutMs = 3000, CancellationToken ct = default);
@@ -102,25 +106,35 @@ public class ModemSerialPortClient : IModemSerialClient
         return map;
     }
 
-    public void Connect(string portName, int baudRate = 115200, int timeoutMs = 3000)
+    public bool Connect(string portName, int baudRate = 115200, int timeoutMs = 3000)
     {
         lock (_lock)
         {
             Disconnect();
 
-            _serialPort = new SerialPort(portName, baudRate, Parity.None, 8, StopBits.One)
+            try
             {
-                ReadTimeout = timeoutMs,
-                WriteTimeout = timeoutMs,
-                DtrEnable = true,
-                RtsEnable = true,
-                NewLine = "\r\n",
-                Encoding = Encoding.ASCII
-            };
+                _serialPort = new SerialPort(portName, baudRate, Parity.None, 8, StopBits.One)
+                {
+                    ReadTimeout = timeoutMs,
+                    WriteTimeout = timeoutMs,
+                    DtrEnable = true,
+                    RtsEnable = true,
+                    NewLine = "\r\n",
+                    Encoding = Encoding.ASCII
+                };
 
-            _serialPort.Open();
-            _serialPort.DiscardInBuffer();
-            _serialPort.DiscardOutBuffer();
+                _serialPort.Open();
+                _serialPort.DiscardInBuffer();
+                _serialPort.DiscardOutBuffer();
+                return _serialPort.IsOpen;
+            }
+            catch
+            {
+                _serialPort?.Dispose();
+                _serialPort = null;
+                return false;
+            }
         }
     }
 

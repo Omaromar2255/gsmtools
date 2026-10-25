@@ -122,7 +122,7 @@ public class InteractiveAtWorkflow : IInteractiveAtWorkflow
             OnLog?.Invoke(formatted);
         }
 
-        var results = new List<(string, string, bool)>();
+        var results = new List<(string Command, string Response, bool Success)>();
         if (string.IsNullOrWhiteSpace(batchCommands))
         {
             Log("[WARN] No commands provided in batch input.");
