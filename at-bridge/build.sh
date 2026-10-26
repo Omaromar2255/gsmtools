@@ -1,143 +1,114 @@
 #!/bin/bash
 # ============================================================================
-#  GsmTools AT Bridge - Build Script
-#  بناء ملف AT لأجهزة سامسونج
+#  GsmTools AT Bridge — build script (v4.0)
 # ============================================================================
+#  Produces:
+#    payloads/bin/arm64-v8a/AT       static, Android 5.0+ (API 21), 64-bit
+#    payloads/bin/armeabi-v7a/AT_32  static, Android 5.0+ (API 21), 32-bit
+#    payloads/bin/host-linux/AT      host build for protocol testing (gcc)
+#    payloads/AT, payloads/AT_32     copies of the primary phone binaries
 #
-#  متطلبات:
-#    - Android NDK (r21+ recommended)
-#    - تحميل من: https://developer.android.com/ndk/downloads
+#  Usage:
+#    ./build.sh                build all ABIs
+#    ./build.sh host           host test build only
+#    ./build.sh clean          remove build outputs
+#    ./build.sh deploy         build + push arm64 to device (/data/local/tmp/AT)
 #
-#  الاستخدام:
-#    chmod +x build.sh
-#    ./build.sh                    # بناء عادي
-#    ./build.sh clean              # تنظيف
-#    ./build.sh deploy             # بناء + رفع للجهاز
-#    ./build.sh deploy-run         # بناء + رفع + تشغيل
-#
+#  NDK discovery order: $ANDROID_NDK_HOME > $ANDROID_NDK_ROOT > $NDK_ROOT
+#                        > ~/Android/Sdk/ndk/<latest> > ndk-build on PATH
 # ============================================================================
-
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROJECT_DIR="$SCRIPT_DIR"
-OUTPUT_DIR="$PROJECT_DIR/libs/arm64-v8a"
-BINARY_NAME="AT"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+JNI_DIR="$SCRIPT_DIR/jni"
+OUT_ROOT="$REPO_DIR/payloads/bin"
 
-# ============ البحث عن NDK ============
+ANDROID_API_64=21   # widest device support (Android 5.0+)
+ANDROID_API_32=21
+
+log()  { printf '[*] %s\n' "$1"; }
+ok()   { printf '[OK] %s\n' "$1"; }
+die()  { printf '[ERROR] %s\n' "$1" >&2; exit 1; }
 
 find_ndk() {
-    # البحث في المتغيرات
-    if [ -n "$ANDROID_NDK_HOME" ] && [ -d "$ANDROID_NDK_HOME" ]; then
-        echo "$ANDROID_NDK_HOME"
-        return 0
-    fi
-    if [ -n "$ANDROID_NDK_ROOT" ] && [ -d "$ANDROID_NDK_ROOT" ]; then
-        echo "$ANDROID_NDK_ROOT"
-        return 0
-    fi
-    if [ -n "$NDK_ROOT" ] && [ -d "$NDK_ROOT" ]; then
-        echo "$NDK_ROOT"
-        return 0
-    fi
-
-    # البحث في المسارات الشائعة
-    local COMMON_PATHS=(
-        "$HOME/Android/Sdk/ndk"
-        "$HOME/Library/Android/sdk/ndk"
-        "/usr/local/android-ndk"
-        "/opt/android-ndk"
-        "$HOME/android-ndk"
-    )
-    for base in "${COMMON_PATHS[@]}"; do
+    for v in ANDROID_NDK_HOME ANDROID_NDK_ROOT NDK_ROOT; do
+        [ -n "${!v:-}" ] && [ -d "${!v}" ] && { echo "${!v}"; return 0; }
+    done
+    for base in "$HOME/Android/Sdk/ndk" "$HOME/Library/Android/sdk/ndk" \
+                /opt/android-ndk /usr/local/android-ndk; do
         if [ -d "$base" ]; then
-            # اختيار أحدث نسخة
-            local latest=$(ls -d "$base"/*/ 2>/dev/null | sort -V | tail -1)
-            if [ -n "$latest" ] && [ -f "$latest/ndk-build" ]; then
-                echo "$latest"
-                return 0
-            fi
-            if [ -f "$base/ndk-build" ]; then
-                echo "$base"
-                return 0
-            fi
+            latest="$(ls -d "$base"/*/ 2>/dev/null | sort -V | tail -1 || true)"
+            [ -n "$latest" ] && [ -x "$latest/ndk-build" ] && { echo "${latest%/}"; return 0; }
+            [ -x "$base/ndk-build" ] && { echo "$base"; return 0; }
         fi
     done
-
-    # البحث في PATH
-    if command -v ndk-build &>/dev/null; then
-        echo "$(dirname $(which ndk-build))"
-        return 0
-    fi
-
+    command -v ndk-build >/dev/null 2>&1 && { dirname "$(command -v ndk-build)"; return 0; }
     return 1
 }
 
-NDK_PATH=$(find_ndk) || {
-    echo "========================================"
-    echo " ERROR: Android NDK not found!"
-    echo "========================================"
-    echo ""
-    echo " Download NDK from:"
-    echo "   https://developer.android.com/ndk/downloads"
-    echo ""
-    echo " Then set environment variable:"
-    echo "   export ANDROID_NDK_HOME=/path/to/ndk"
-    echo ""
-    echo " Or place it in: ~/Android/Sdk/ndk/"
-    echo "========================================"
-    exit 1
+build_host() {
+    command -v gcc >/dev/null 2>&1 || die "gcc not found (needed for host build)"
+    mkdir -p "$OUT_ROOT/host-linux"
+    log "Building host-linux test binary (gcc)..."
+    gcc -Wall -Wextra -O2 -o "$OUT_ROOT/host-linux/AT" "$JNI_DIR/at_bridge.c"
+    ok "host-linux: $OUT_ROOT/host-linux/AT"
 }
 
-NDK_BUILD="$NDK_PATH/ndk-build"
-echo "[*] Using NDK: $NDK_PATH"
+build_android() {
+    NDK_PATH="$(find_ndk)" || {
+        cat >&2 <<'EOF'
+[ERROR] Android NDK not found.
+  Install from https://developer.android.com/ndk/downloads then:
+    export ANDROID_NDK_HOME=/path/to/ndk
+  (or run './build.sh host' for the host test build only)
+EOF
+        exit 1
+    }
+    log "Using NDK: $NDK_PATH"
+    TOOLCHAIN="$NDK_PATH/toolchains/llvm/prebuilt/linux-x86_64/bin"
+    [ -d "$TOOLCHAIN" ] || TOOLCHAIN="$NDK_PATH/toolchains/llvm/prebuilt/darwin-x86_64/bin"
+    [ -d "$TOOLCHAIN" ] || TOOLCHAIN="$NDK_PATH/toolchains/llvm/prebuilt/windows-x86_64/bin"
+    [ -d "$TOOLCHAIN" ] || die "unsupported host OS for NDK toolchain"
 
-# ============ الأوامر ============
+    mkdir -p "$OUT_ROOT/arm64-v8a" "$OUT_ROOT/armeabi-v7a"
+
+    log "Building arm64-v8a (static, API $ANDROID_API_64)..."
+    "$TOOLCHAIN/aarch64-linux-android${ANDROID_API_64}-clang" \
+        -static -O2 -s -Wall -Wextra -fvisibility=hidden \
+        "$JNI_DIR/at_bridge.c" -o "$OUT_ROOT/arm64-v8a/AT" -ldl
+
+    log "Building armeabi-v7a (static, API $ANDROID_API_32)..."
+    "$TOOLCHAIN/armv7a-linux-androideabi${ANDROID_API_32}-clang" \
+        -static -O2 -s -Wall -Wextra -fvisibility=hidden \
+        "$JNI_DIR/at_bridge.c" -o "$OUT_ROOT/armeabi-v7a/AT_32" -ldl
+
+    # primary phone binaries at payloads root (what gets pushed by workflows)
+    cp "$OUT_ROOT/arm64-v8a/AT"      "$REPO_DIR/payloads/AT"
+    cp "$OUT_ROOT/armeabi-v7a/AT_32" "$REPO_DIR/payloads/AT_32"
+    ok "arm64-v8a: $(stat -c%s "$OUT_ROOT/arm64-v8a/AT") bytes"
+    ok "armeabi-v7a: $(stat -c%s "$OUT_ROOT/armeabi-v7a/AT_32") bytes"
+}
 
 case "${1:-build}" in
     clean)
-        echo "[*] Cleaning..."
-        "$NDK_BUILD" NDK_PROJECT_PATH="$PROJECT_DIR" \
-                     APP_BUILD_SCRIPT="$PROJECT_DIR/jni/Android.mk" \
-                     NDK_APPLICATION_MK="$PROJECT_DIR/jni/Application.mk" \
-                     clean
-        rm -rf "$PROJECT_DIR/obj" "$PROJECT_DIR/libs"
-        echo "[OK] Clean done"
-        ;;
-
+        rm -rf "$OUT_ROOT" "$REPO_DIR/payloads/AT" "$REPO_DIR/payloads/AT_32"
+        ok "cleaned" ;;
+    host)
+        build_host ;;
     build)
-        echo "[*] Building AT Bridge..."
-        "$NDK_BUILD" NDK_PROJECT_PATH="$PROJECT_DIR" \
-                     APP_BUILD_SCRIPT="$PROJECT_DIR/jni/Android.mk" \
-                     NDK_APPLICATION_MK="$PROJECT_DIR/jni/Application.mk" \
-                     -j$(nproc 2>/dev/null || echo 4)
-        echo ""
-        echo "[OK] Build successful!"
-        echo "[*] Binary: $OUTPUT_DIR/$BINARY_NAME"
-        ls -la "$OUTPUT_DIR/$BINARY_NAME" 2>/dev/null
-        file "$OUTPUT_DIR/$BINARY_NAME" 2>/dev/null
-        ;;
-
+        build_android
+        build_host || log "host build skipped (gcc missing)" ;;
     deploy)
-        echo "[*] Building and deploying..."
         "$0" build
-        echo ""
-        echo "[*] Pushing to device..."
-        adb push "$OUTPUT_DIR/$BINARY_NAME" /data/local/tmp/AT
+        adb push "$REPO_DIR/payloads/AT" /data/local/tmp/AT
         adb shell chmod 755 /data/local/tmp/AT
-        echo "[OK] Deployed to /data/local/tmp/AT"
-        ;;
-
+        ok "deployed to /data/local/tmp/AT" ;;
     deploy-run)
-        "$0" deploy
-        echo ""
-        echo "[*] Running on device..."
-        echo "========================================"
-        adb shell /data/local/tmp/AT
-        ;;
-
+        "$0" build
+        adb push "$REPO_DIR/payloads/AT" /data/local/tmp/AT
+        adb shell chmod 755 /data/local/tmp/AT
+        adb shell /data/local/tmp/AT ;;
     *)
-        echo "Usage: $0 {build|clean|deploy|deploy-run}"
-        exit 1
-        ;;
+        echo "Usage: $0 [build|host|clean|deploy|deploy-run]"; exit 2 ;;
 esac

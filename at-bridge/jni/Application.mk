@@ -1,13 +1,10 @@
-# Application.mk - GsmTools AT Bridge
+# Application.mk - GsmTools AT Bridge (v4.0)
 
-# بناء لـ ARM64 و ARMv7 (دعم الأجهزة 64-بت و 32-بت)
+# 64-bit + 32-bit -> covers Android 5.0+ devices of every generation
 APP_ABI          := arm64-v8a armeabi-v7a
 
-# أقل إصدار أندرويد مدعوم
-APP_PLATFORM     := android-29
+# Widest device support (Android 5.0 Lollipop and later)
+APP_PLATFORM     := android-21
 
-# لا نحتاج STL
 APP_STL          := none
-
-# تحسين الحجم
 APP_OPTIM        := release

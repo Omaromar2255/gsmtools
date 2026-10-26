@@ -1,13 +1,30 @@
 /*
  * ============================================================================
- *  GsmTools - Multi-Modal RIL/IPC/AT Bridge & Modem Diagnostics (v3.0 Pro)
+ *  GsmTools — Samsung AT / RIL / IPC Multi-Modal Bridge  (v4.0)
  * ============================================================================
- *  Compile: aarch64-linux-android29-clang -O2 -s -fvisibility=hidden
- *           -ldl at_bridge.c -o AT
- *  Or 32-bit: armv7a-linux-androideabi21-clang -O2 -s -ldl at_bridge.c -o AT
+ *  Complete rewrite of the on-device bridge binary.
+ *
+ *  Channels (priority order):
+ *    1. CH_SECRIL_LIB     libsecril-client.so  (send_recv_cmd)   [strongest]
+ *    2. CH_DEV_IPC_RAW     /dev/umts_ipc0 | ipc1 | rfs0 | diag
+ *    3. CH_RILD_PARCEL     /dev/socket/rild* (OEM hook parcel 59)
+ *    4. CH_DEV_AT_TTY      /dev/umts_atc0 | atc1 | at0 | at_distributor | smd* | tty*
+ *    5. CH_TCP_RELAY_2600  TCP 127.0.0.1:2600 (UID-1000 companion relay)
+ *
+ *  Session protocol (stable contract, consumed by GsmTools.Desktop):
+ *    INFO|MODEL=..|CSC=..|AND=..|PATCH=..|DBG=..|UID=..|CH=..
+ *    prompt " << "  — machine markers ".OK..%s#" ".ERR_*.." ".CH=%s.."
+ *    SIMLOCK|CPIN=..|PN=..|PU=..|PP=..|PC=..|SC=..
+ *    DEVINFO|MODEL=..|..|DEVCON=..
+ *    AKSEED|<response>
+ *
+ *  Build (Android):
+ *    aarch64-linux-android29-clang  -O2 -s -fvisibility=hidden -ldl at_bridge.c -o AT
+ *    armv7a-linux-androideabi21-clang -O2 -s -ldl at_bridge.c -o AT_32
+ *  Build (host Linux, for protocol testing / mock runs):
+ *    gcc -DGT_HOST_BUILD -O2 at_bridge.c -o AT_host -lpthread
  * ============================================================================
  */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -16,8 +33,19 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <ctype.h>
 #include <termios.h>
-#include <dlfcn.h>
+
+#ifdef __ANDROID__
+#  include <dlfcn.h>
+#  include <sys/system_properties.h>
+#  define gt_system_property_get __system_property_get
+#  define GT_HAVE_SECRIL 1
+#else
+#  include "gt_host_compat.h"   /* host-build shims (properties / dlopen) */
+#  define GT_HAVE_SECRIL 0
+#endif
+
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -25,22 +53,23 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <signal.h>
-#include <sys/system_properties.h>
 
 #include "all_gsm_commands.h"
 
-#define CMD_BUF_SIZE            4096
-#define RESP_BUF_SIZE           8192
-#define RIL_REQUEST_OEM_HOOK_RAW 59
+#define GT_VERSION     "4.0"
+#define CMD_BUF_SIZE   4096
+#define RESP_BUF_SIZE  8192
 
-/* أنماط قنوات الاتصال */
+/* =========================================================================
+ *  0. GLOBAL STATE
+ * ========================================================================= */
 typedef enum {
     CH_NONE = 0,
-    CH_SECRIL_LIB,      /* libsecril-client.so */
-    CH_RILD_PARCEL,     /* /dev/socket/rild مع تغليف Parcel قياسي */
-    CH_DEV_IPC_RAW,     /* /dev/umts_ipc0 أو /dev/umts_rfs0 */
-    CH_DEV_AT_TTY,      /* /dev/umts_atc0 أو /dev/smd11 للأوامر النصية */
-    CH_TCP_RELAY_2600   /* TCP localhost:2600 Companion App / Netcat Relay */
+    CH_SECRIL_LIB,      /* libsecril-client.so send_recv_cmd          */
+    CH_DEV_IPC_RAW,     /* /dev/umts_ipc0 | umts_rfs0 | /dev/diag     */
+    CH_RILD_PARCEL,     /* /dev/socket/rild + OEM parcel framing     */
+    CH_DEV_AT_TTY,      /* /dev/umts_atc0 & friends (text AT)         */
+    CH_TCP_RELAY_2600   /* TCP localhost:2600 companion bridge       */
 } channel_mode_t;
 
 typedef struct {
@@ -51,33 +80,42 @@ typedef struct {
 } bridge_ctx_t;
 
 static bridge_ctx_t g_ctx = { .mode = CH_NONE, .fd = -1, .dl_handle = NULL };
-static volatile int g_running = 1;
-static uint32_t     g_session_seed = 0; /* 0 = Plaintext, >0 = Encrypted Session */
-static int          g_verbose = 0;
+static volatile int  g_running = 1;
+static uint32_t       g_session_seed = 0;   /* 0 = plaintext, >0 = Xorshift32 */
+static int            g_verbose = 0;
+
+/* libsecril send_recv_cmd symbol (Android only, resolved by dlsym) */
+typedef int (*secril_send_recv_fn)(void *client, int cmd_id,
+                                   const void *data_in, size_t in_len,
+                                   void *data_out, size_t *out_len);
+static secril_send_recv_fn g_secril_fn = NULL;
 
 static void sig_handler(int sig) {
     (void)sig;
     g_running = 0;
 }
 
-/* ============================================================================
- *  1. قراءة خصائص النظام مباشرة من الذاكرة
- * ============================================================================ */
+/* =========================================================================
+ *  1. SYSTEM PROPERTY READ (direct, no subprocess)
+ * ========================================================================= */
 static void fast_getprop(const char *key, char *out, size_t max_len) {
     char buf[PROP_VALUE_MAX] = {0};
-    if (__system_property_get(key, buf) > 0) {
+    if (gt_system_property_get(key, buf) > 0) {
         strncpy(out, buf, max_len - 1);
         out[max_len - 1] = '\0';
     } else {
         strncpy(out, "N/A", max_len - 1);
+        out[max_len - 1] = '\0';
     }
 }
 
-/* ============================================================================
- *  2. التشفير الديناميكي للجلسة (Xorshift32 Stream Cipher)
- * ============================================================================ */
+/* =========================================================================
+ *  2. SESSION CIPHER — Marsaglia Xorshift32 [13,17,5] (involutory stream)
+ *     Identical to C# Xorshift32StreamCipher and tools/ parity tests.
+ *     Covers HEX IPC payloads + responses only (AT text stays readable).
+ * ========================================================================= */
 static void transform_buffer(uint8_t *buf, size_t len, uint32_t seed) {
-    if (seed == 0) return; /* الوضع المباشر غير المشفر */
+    if (seed == 0) return;
     uint32_t state = seed;
     for (size_t i = 0; i < len; i++) {
         state ^= state << 13;
@@ -87,81 +125,69 @@ static void transform_buffer(uint8_t *buf, size_t len, uint32_t seed) {
     }
 }
 
-/* ============================================================================
- *  3. مصعد الصلاحيات التلقائي عبر البورت 2600 (UID 1000 Auto-Relay)
- * ============================================================================ */
-static int try_escalate_via_port_2600(int port) {
-    if (getuid() == 1000 || getuid() == 0)
-        return 0;
-
+/* =========================================================================
+ *  3. PORT-2600 UID-1000 ESCALATION BRIDGE
+ * ========================================================================= */
+static int relay_roundtrip(int port, const char *cmd, char *resp, size_t resp_max,
+                           int timeout_ms) {
     int sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock < 0) return -1;
 
     struct sockaddr_in addr = {0};
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
+    addr.sin_port   = htons((uint16_t)port);
     addr.sin_addr.s_addr = inet_addr("127.0.0.1");
 
-    struct timeval tv = { .tv_sec = 1, .tv_usec = 0 };
+    struct timeval tv = { .tv_sec = timeout_ms / 1000,
+                           .tv_usec = (timeout_ms % 1000) * 1000 };
     setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
     if (connect(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         close(sock);
         return -1;
     }
 
-    const char *init_cmd = "setprop ctl.stop ssud; id\n";
-    write(sock, init_cmd, strlen(init_cmd));
+    if (write(sock, cmd, strlen(cmd)) < 0) { close(sock); return -1; }
 
-    char resp[256] = {0};
-    usleep(150000);
-    int n = read(sock, resp, sizeof(resp) - 1);
+    /* poll until data or timeout — retry small reads instead of one blind read */
+    int total = 0;
+    while (total < (int)resp_max - 1) {
+        fd_set rfds;
+        FD_ZERO(&rfds);
+        FD_SET(sock, &rfds);
+        struct timeval tv2 = { .tv_sec = 0, .tv_usec = 200000 };
+        if (select(sock + 1, &rfds, NULL, NULL, &tv2) <= 0) break;
+        int n = read(sock, resp + total, resp_max - 1 - total);
+        if (n <= 0) break;
+        total += n;
+        if (strstr(resp, "uid=") || strstr(resp, "OK")) break;  /* got a verdict */
+    }
+    resp[total] = '\0';
     close(sock);
+    return total;
+}
 
-    if (n > 0 && strstr(resp, "uid=1000")) {
-        if (g_verbose) printf("[+] UID 1000 Escalation Bridge confirmed on port %d\n", port);
-        fflush(stdout);
-        return 1;
+static int try_escalate_via_port_2600(int port) {
+    if (getuid() == 1000 || getuid() == 0)
+        return 0;
+
+    char resp[512] = {0};
+    /* the canonical probe: stops ssud then asks for identity */
+    if (relay_roundtrip(port, RELAY_ESCALATE_CMD, resp, sizeof(resp), 1200) > 0) {
+        if (strstr(resp, "uid=1000") || strstr(resp, "uid=0")) {
+            if (g_verbose)
+                printf("[+] UID-1000 escalation bridge confirmed on port %d\n", port);
+            return 1;
+        }
     }
     return -1;
 }
 
-/* ============================================================================
- *  4. جداول قنوات الاتصال بالمودم وفتح المنافذ
- * ============================================================================ */
-static const char *IPC_NODES[] = {
-    "/dev/umts_ipc0",
-    "/dev/umts_ipc1",
-    "/dev/umts_rfs0",
-    "/dev/diag",
-    NULL
-};
-
-static const char *AT_NODES[] = {
-    "/dev/umts_atc0",
-    "/dev/umts_atc1",
-    "/dev/umts_at0",
-    "/dev/at_distributor",
-    "/dev/at_distributor0",
-    "/dev/smd11",
-    "/dev/smd0",
-    "/dev/smd7",
-    "/dev/ttyGS0",
-    "/dev/ttyACM0",
-    "/dev/ttyUSB0",
-    NULL
-};
-
-static const char *RILD_SOCKETS[] = {
-    "/dev/socket/rild",
-    "/dev/socket/rild-oem",
-    "/dev/socket/rild-debug",
-    "/dev/socket/rild2",
-    "/dev/socket/qmux_radio/qmux_client_socket0",
-    NULL
-};
-
-static int open_device_list(const char **list, channel_mode_t target_mode) {
+/* =========================================================================
+ *  4. CHANNEL OPENERS
+ * ========================================================================= */
+static int open_device_list(const char * const *list, channel_mode_t target_mode) {
     for (int i = 0; list[i] != NULL; i++) {
         if (access(list[i], R_OK | W_OK) != 0) continue;
         int fd = open(list[i], O_RDWR | O_NONBLOCK | O_NOCTTY);
@@ -178,7 +204,7 @@ static int open_device_list(const char **list, channel_mode_t target_mode) {
             }
             g_ctx.mode = target_mode;
             g_ctx.fd   = fd;
-            strncpy(g_ctx.active_path, list[i], sizeof(g_ctx.active_path) - 1);
+            snprintf(g_ctx.active_path, sizeof(g_ctx.active_path), "%s", list[i]);
             return 0;
         }
     }
@@ -186,23 +212,46 @@ static int open_device_list(const char **list, channel_mode_t target_mode) {
 }
 
 static int open_rild_socket(void) {
-    for (int i = 0; RILD_SOCKETS[i] != NULL; i++) {
-        if (access(RILD_SOCKETS[i], F_OK) != 0) continue;
+    for (int i = 0; ALL_RILD_SOCKETS[i] != NULL; i++) {
+        if (access(ALL_RILD_SOCKETS[i], F_OK) != 0) continue;
         int fd = socket(AF_UNIX, SOCK_STREAM, 0);
         if (fd < 0) continue;
 
         struct sockaddr_un addr = {0};
         addr.sun_family = AF_UNIX;
-        strncpy(addr.sun_path, RILD_SOCKETS[i], sizeof(addr.sun_path) - 1);
+        strncpy(addr.sun_path, ALL_RILD_SOCKETS[i], sizeof(addr.sun_path) - 1);
 
         if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) == 0) {
             g_ctx.mode = CH_RILD_PARCEL;
             g_ctx.fd   = fd;
-            strncpy(g_ctx.active_path, RILD_SOCKETS[i], sizeof(g_ctx.active_path) - 1);
+            snprintf(g_ctx.active_path, sizeof(g_ctx.active_path), "%s", ALL_RILD_SOCKETS[i]);
             return 0;
         }
         close(fd);
     }
+    return -1;
+}
+
+/* ---- CH_SECRIL_LIB: dlopen libsecril-client.so and use send_recv_cmd ---- */
+static int open_secril_library(void) {
+#if GT_HAVE_SECRIL
+    static const char *paths[] = {
+        SECRIL_LIBRARY_PATH1, SECRIL_LIBRARY_PATH2, SECRIL_LIBRARY_PATH3, NULL
+    };
+    for (int i = 0; paths[i]; i++) {
+        void *h = dlopen(paths[i], RTLD_NOW);
+        if (!h) continue;
+        secril_send_recv_fn fn = (secril_send_recv_fn)dlsym(h, SECRIL_SEND_RECV_SYM);
+        if (!fn) { dlclose(h); continue; }
+        g_ctx.dl_handle = h;
+        g_secril_fn     = fn;
+        g_ctx.mode      = CH_SECRIL_LIB;
+        g_ctx.fd        = -1;
+        snprintf(g_ctx.active_path, sizeof(g_ctx.active_path), "%s", paths[i]);
+        if (g_verbose) printf("[+] libsecril channel open via %s\n", paths[i]);
+        return 0;
+    }
+#endif
     return -1;
 }
 
@@ -212,7 +261,7 @@ static int open_tcp_relay(int port) {
 
     struct sockaddr_in addr = {0};
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
+    addr.sin_port   = htons((uint16_t)port);
     addr.sin_addr.s_addr = inet_addr("127.0.0.1");
 
     struct timeval tv = { .tv_sec = 1, .tv_usec = 500000 };
@@ -229,29 +278,31 @@ static int open_tcp_relay(int port) {
     return -1;
 }
 
+/* =========================================================================
+ *  5. CHANNEL SELECTION
+ * ========================================================================= */
 static int init_best_channel(int prefer_at_tty) {
-    if (g_ctx.fd >= 0) {
-        close(g_ctx.fd);
-        g_ctx.fd = -1;
-    }
+    if (g_ctx.fd >= 0) { close(g_ctx.fd); g_ctx.fd = -1; }
+    g_ctx.dl_handle = NULL;
+    g_secril_fn     = NULL;
+    g_ctx.mode      = CH_NONE;
 
     if (prefer_at_tty) {
-        if (open_device_list(AT_NODES, CH_DEV_AT_TTY) == 0) return 0;
+        if (open_device_list(ALL_AT_NODES, CH_DEV_AT_TTY) == 0) return 0;
     }
 
-    if (open_device_list(IPC_NODES, CH_DEV_IPC_RAW) == 0) return 0;
-    if (open_rild_socket() == 0) return 0;
-    if (open_device_list(AT_NODES, CH_DEV_AT_TTY) == 0) return 0;
-    if (open_tcp_relay(2600) == 0) return 0;
+    if (open_secril_library() == 0)                      return 0;  /* strongest first */
+    if (open_device_list(ALL_IPC_NODES, CH_DEV_IPC_RAW) == 0) return 0;
+    if (open_rild_socket() == 0)                         return 0;
+    if (open_device_list(ALL_AT_NODES, CH_DEV_AT_TTY) == 0) return 0;
+    if (open_tcp_relay(RELAY_PORT_DEFAULT) == 0)         return 0;
 
     return -1;
 }
 
 static int force_specific_device(const char *path) {
-    if (g_ctx.fd >= 0) {
-        close(g_ctx.fd);
-        g_ctx.fd = -1;
-    }
+    if (g_ctx.fd >= 0) { close(g_ctx.fd); g_ctx.fd = -1; }
+    g_ctx.mode = CH_NONE;
 
     if (strncmp(path, "/dev/socket/", 12) == 0) {
         int fd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -262,7 +313,7 @@ static int force_specific_device(const char *path) {
             if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) == 0) {
                 g_ctx.mode = CH_RILD_PARCEL;
                 g_ctx.fd   = fd;
-                strncpy(g_ctx.active_path, path, sizeof(g_ctx.active_path) - 1);
+                snprintf(g_ctx.active_path, sizeof(g_ctx.active_path), "%s", path);
                 return 0;
             }
             close(fd);
@@ -280,51 +331,65 @@ static int force_specific_device(const char *path) {
                     tcflush(fd, TCIOFLUSH);
                 }
             }
-            g_ctx.mode = (strstr(path, "ipc") || strstr(path, "diag")) ? CH_DEV_IPC_RAW : CH_DEV_AT_TTY;
+            g_ctx.mode = (strstr(path, "ipc") || strstr(path, "diag"))
+                             ? CH_DEV_IPC_RAW : CH_DEV_AT_TTY;
             g_ctx.fd   = fd;
-            strncpy(g_ctx.active_path, path, sizeof(g_ctx.active_path) - 1);
+            snprintf(g_ctx.active_path, sizeof(g_ctx.active_path), "%s", path);
             return 0;
         }
     }
     return -1;
 }
 
-/* ============================================================================
- *  5. فحص قنوات المودم (Scan Mode)
- * ============================================================================ */
+/* =========================================================================
+ *  6. CHANNEL SCAN (SCAN command)
+ * ========================================================================= */
 static void scan_devices(void) {
     printf("=== Available Modem Devices ===\n");
-    for (int i = 0; AT_NODES[i] != NULL; i++) {
-        if (access(AT_NODES[i], F_OK) == 0) {
-            int rw = access(AT_NODES[i], R_OK | W_OK);
-            printf("[+] %s: Found (TTY AT - %s)\n", AT_NODES[i], rw == 0 ? "Read/Write OK" : "Permission Denied");
+    for (int i = 0; ALL_AT_NODES[i] != NULL; i++) {
+        if (access(ALL_AT_NODES[i], F_OK) == 0) {
+            int rw = access(ALL_AT_NODES[i], R_OK | W_OK);
+            printf("[+] %s: Found (TTY AT - %s)\n", ALL_AT_NODES[i],
+                   rw == 0 ? "Read/Write OK" : "Permission Denied");
         }
     }
-    for (int i = 0; IPC_NODES[i] != NULL; i++) {
-        if (access(IPC_NODES[i], F_OK) == 0) {
-            int rw = access(IPC_NODES[i], R_OK | W_OK);
-            printf("[+] %s: Found (Direct IPC - %s)\n", IPC_NODES[i], rw == 0 ? "Read/Write OK" : "Permission Denied");
+    for (int i = 0; ALL_IPC_NODES[i] != NULL; i++) {
+        if (access(ALL_IPC_NODES[i], F_OK) == 0) {
+            int rw = access(ALL_IPC_NODES[i], R_OK | W_OK);
+            printf("[+] %s: Found (Direct IPC - %s)\n", ALL_IPC_NODES[i],
+                   rw == 0 ? "Read/Write OK" : "Permission Denied");
         }
     }
     printf("=== RIL Sockets ===\n");
-    for (int i = 0; RILD_SOCKETS[i] != NULL; i++) {
-        if (access(RILD_SOCKETS[i], F_OK) == 0) {
+    for (int i = 0; ALL_RILD_SOCKETS[i] != NULL; i++) {
+        if (access(ALL_RILD_SOCKETS[i], F_OK) == 0) {
             int s = socket(AF_UNIX, SOCK_STREAM, 0);
             struct sockaddr_un addr = {0};
             addr.sun_family = AF_UNIX;
-            strncpy(addr.sun_path, RILD_SOCKETS[i], sizeof(addr.sun_path) - 1);
+            strncpy(addr.sun_path, ALL_RILD_SOCKETS[i], sizeof(addr.sun_path) - 1);
             int c = (s >= 0) ? connect(s, (struct sockaddr *)&addr, sizeof(addr)) : -1;
-            printf("[%c] %s: Found (%s)\n", c == 0 ? '+' : '!', RILD_SOCKETS[i],
+            printf("[%c] %s: Found (%s)\n", c == 0 ? '+' : '!', ALL_RILD_SOCKETS[i],
                    c == 0 ? "Connectable / Active" : "Exists, connect refused/SELinux blocked");
             if (s >= 0) close(s);
         }
     }
+#if GT_HAVE_SECRIL
+    printf("=== libsecril ===\n");
+    if (g_secril_fn != NULL) {
+        printf("[+] libsecril-client.so: loaded (%s)\n", g_ctx.active_path);
+    } else {
+        void *h = dlopen(SECRIL_LIBRARY_PATH1, RTLD_NOW);
+        printf("[%c] libsecril-client.so: %s\n", h ? '+' : '!',
+               h ? "loadable" : "not loadable on this build");
+        if (h) dlclose(h);
+    }
+#endif
     fflush(stdout);
 }
 
-/* ============================================================================
- *  6. إرسال حزم RIL Parcel و IPC
- * ============================================================================ */
+/* =========================================================================
+ *  7. RAW IO HELPERS
+ * ========================================================================= */
 static int raw_write_all(int fd, const uint8_t *buf, int len) {
     int total = 0;
     while (total < len) {
@@ -341,7 +406,8 @@ static int raw_write_all(int fd, const uint8_t *buf, int len) {
 
 static int raw_read_timeout(int fd, uint8_t *buf, int max_len, int timeout_ms) {
     fd_set rfds;
-    struct timeval tv = { .tv_sec = timeout_ms / 1000, .tv_usec = (timeout_ms % 1000) * 1000 };
+    struct timeval tv = { .tv_sec = timeout_ms / 1000,
+                           .tv_usec = (timeout_ms % 1000) * 1000 };
     FD_ZERO(&rfds);
     FD_SET(fd, &rfds);
 
@@ -361,6 +427,9 @@ static int raw_read_timeout(int fd, uint8_t *buf, int max_len, int timeout_ms) {
     return total;
 }
 
+/* =========================================================================
+ *  8. RILD OEM-HOOK PARCEL  ([4B BE size][4B req=59][4B token][4B dlen][ipc][pad4])
+ * ========================================================================= */
 static int send_rild_oem_parcel(int fd, const uint8_t *ipc_data, int ipc_len,
                                 uint8_t *out_resp, int max_resp) {
     static uint32_t s_token = 1;
@@ -376,9 +445,7 @@ static int send_rild_oem_parcel(int fd, const uint8_t *ipc_data, int ipc_len,
     memcpy(parcel + offset, &dlen,   4); offset += 4;
     memcpy(parcel + offset, ipc_data, ipc_len); offset += ipc_len;
 
-    while ((offset - 4) % 4 != 0) {
-        parcel[offset++] = 0x00;
-    }
+    while ((offset - 4) % 4 != 0) parcel[offset++] = 0x00;
 
     uint32_t parcel_size_be = htonl(offset - 4);
     memcpy(parcel, &parcel_size_be, 4);
@@ -387,11 +454,29 @@ static int send_rild_oem_parcel(int fd, const uint8_t *ipc_data, int ipc_len,
     return raw_read_timeout(fd, out_resp, max_resp, 2500);
 }
 
+/* =========================================================================
+ *  9. IPC FRAME DISPATCH (with libsecril + Qualcomm CSC fallback)
+ * ========================================================================= */
 static int dispatch_ipc_frame(const uint8_t *ipc_bytes, int len,
                               uint8_t *resp, int max_resp) {
-    if (g_ctx.mode == CH_NONE && init_best_channel(0) != 0) {
-        /* Multi-Modal Fallback when raw /dev/ or socket is blocked by SELinux (Qualcomm SM-S918U): */
-        if (len >= 6 && ipc_bytes[0] == 0x06 && ipc_bytes[1] == 0x01) {
+    /* strongest: libsecril send_recv_cmd */
+    if (g_ctx.mode == CH_SECRIL_LIB && g_secril_fn != NULL) {
+        size_t out_len = 0;
+        uint8_t out_buf[RESP_BUF_SIZE];
+        int rc = g_secril_fn(NULL, RIL_REQUEST_OEM_HOOK_RAW,
+                              ipc_bytes, (size_t)len,
+                              out_buf, &out_len);
+        if (rc == 0 && out_len > 0 && out_len < (size_t)max_resp) {
+            memcpy(resp, out_buf, out_len);
+            return (int)out_len;
+        }
+        /* fall through to fd-based channels */
+    }
+
+    if (g_ctx.fd < 0 && init_best_channel(0) != 0) {
+        /* Multi-modal fallback — raw /dev + sockets blocked (Qualcomm SM-S918U):
+         * extract CSC letters from a 06 01 frame and apply via setprop chain. */
+        if (len >= 6 && ipc_bytes[0] == IPC_TYPE_CSC_MAIN && ipc_bytes[1] == IPC_TYPE_CSC_SUB) {
             char extracted_csc[8] = {0};
             int csc_idx = 0;
             for (int i = 6; i < len && csc_idx < 5; i++) {
@@ -405,13 +490,14 @@ static int dispatch_ipc_frame(const uint8_t *ipc_bytes, int len,
                          "setprop persist.sys.omc_sales_code %s; "
                          "setprop persist.sys.sales_code %s; "
                          "setprop ro.csc.sales_code %s; "
-                         "am broadcast -a com.samsung.intent.action.CSC_COMPLETED --es csc %s >/dev/null 2>&1",
+                         "am broadcast -a com.samsung.intent.action.CSC_COMPLETED "
+                         "--es csc %s >/dev/null 2>&1",
                          extracted_csc, extracted_csc, extracted_csc, extracted_csc);
                 system(prop_cmd);
             }
             if (resp && max_resp >= 4) {
-                resp[0] = 0x06;
-                resp[1] = 0x01;
+                resp[0] = IPC_TYPE_CSC_MAIN;
+                resp[1] = IPC_TYPE_CSC_SUB;
                 resp[2] = 0x00;
                 resp[3] = 0x00;
                 return 4;
@@ -429,6 +515,9 @@ static int dispatch_ipc_frame(const uint8_t *ipc_bytes, int len,
     return raw_read_timeout(g_ctx.fd, resp, max_resp, 2500);
 }
 
+/* =========================================================================
+ * 10. HEX <-> BIN
+ * ========================================================================= */
 static int hex2bin(const char *hex, uint8_t *out, int max_out) {
     int len = 0;
     while (*hex && *(hex + 1) && len < max_out) {
@@ -447,10 +536,11 @@ static void bin2hex(const uint8_t *in, int len, char *out) {
     out[len * 2] = '\0';
 }
 
-/* ============================================================================
- *  7. إرسال أمر AT نصي متزامن (Synchronous AT Command Sender)
- * ============================================================================ */
-static int send_at_command_sync(const char *cmd, char *out_resp, int max_resp, int timeout_ms) {
+/* =========================================================================
+ * 11. SYNCHRONOUS AT COMMAND SENDER (multi-node aware, relay-safe)
+ * ========================================================================= */
+static int send_at_command_sync(const char *cmd, char *out_resp, int max_resp,
+                                int timeout_ms) {
     if (!cmd) return -1;
 
     if (g_ctx.mode != CH_DEV_AT_TTY && g_ctx.mode != CH_TCP_RELAY_2600) {
@@ -458,19 +548,28 @@ static int send_at_command_sync(const char *cmd, char *out_resp, int max_resp, i
     }
     if (g_ctx.fd < 0) return -1;
 
-    /* Clean trailing CRLF and spaces */
+    /* strip trailing CRLF / spaces */
     char clean_cmd[CMD_BUF_SIZE];
     strncpy(clean_cmd, cmd, sizeof(clean_cmd) - 1);
     clean_cmd[sizeof(clean_cmd) - 1] = '\0';
-    int len = strlen(clean_cmd);
-    while (len > 0 && (clean_cmd[len - 1] == '\r' || clean_cmd[len - 1] == '\n' || clean_cmd[len - 1] == ' ')) {
+    int len = (int)strlen(clean_cmd);
+    while (len > 0 && (clean_cmd[len-1] == '\r' || clean_cmd[len-1] == '\n' ||
+                       clean_cmd[len-1] == ' ')) {
         clean_cmd[--len] = '\0';
     }
 
     char buf[CMD_BUF_SIZE];
     int l;
     if (g_ctx.mode == CH_TCP_RELAY_2600) {
-        l = snprintf(buf, sizeof(buf), "echo -e '%s\\r' > /dev/umts_atc0 2>/dev/null; head -n 10 /dev/umts_atc0 2>/dev/null\n", clean_cmd);
+        /* through the UID-1000 netcat relay: wrap in a shell one-liner that
+         * tries every known AT node in order (first writable wins) */
+        l = snprintf(buf, sizeof(buf),
+            "for n in /dev/umts_atc0 /dev/umts_atc1 /dev/umts_at0 "
+            "/dev/at_distributor /dev/at_distributor0 /dev/smd11 /dev/ttyGS0; do "
+            "if [ -w \"$n\" ]; then "
+            "echo -e '%s\\r' > \"$n\" 2>/dev/null; "
+            "head -n 10 \"$n\" 2>/dev/null; break; fi; done\n",
+            clean_cmd);
     } else {
         l = snprintf(buf, sizeof(buf), "%s\r\n", clean_cmd);
     }
@@ -482,23 +581,26 @@ static int send_at_command_sync(const char *cmd, char *out_resp, int max_resp, i
     return r;
 }
 
-/* ============================================================================
- *  8. فحص أقفال الشريحة والشبكة (SIM Card & Network Lock Inspection)
- * ============================================================================ */
+/* =========================================================================
+ *  12. SIM & NETWORK LOCK INSPECTION (LOCKS command)
+ * ========================================================================= */
+static const char *clck_state(const char *raw) {
+    if (strstr(raw, "+CLCK: 0") || strstr(raw, "+CLCK:0")) return "UNLOCKED(0)";
+    if (strstr(raw, "+CLCK: 1") || strstr(raw, "+CLCK:1")) return "LOCKED(1)";
+    return "UNKNOWN";
+}
+
 static void query_sim_locks(int verbose) {
     char cpin_resp[256] = {0};
-    char clck_pn[256] = {0};
-    char clck_pu[256] = {0};
-    char clck_pp[256] = {0};
-    char clck_pc[256] = {0};
-    char clck_sc[256] = {0};
+    char clck_pn[256] = {0}, clck_pu[256] = {0}, clck_pp[256] = {0};
+    char clck_pc[256] = {0}, clck_sc[256] = {0};
 
-    send_at_command_sync("AT+CPIN?", cpin_resp, sizeof(cpin_resp), 1200);
-    send_at_command_sync("AT+CLCK=\"PN\",2", clck_pn, sizeof(clck_pn), 1200);
-    send_at_command_sync("AT+CLCK=\"PU\",2", clck_pu, sizeof(clck_pu), 1200);
-    send_at_command_sync("AT+CLCK=\"PP\",2", clck_pp, sizeof(clck_pp), 1200);
-    send_at_command_sync("AT+CLCK=\"PC\",2", clck_pc, sizeof(clck_pc), 1200);
-    send_at_command_sync("AT+CLCK=\"SC\",2", clck_sc, sizeof(clck_sc), 1200);
+    send_at_command_sync(AT_CMD_SIM_STATUS, cpin_resp, sizeof(cpin_resp), 1200);
+    send_at_command_sync(AT_CMD_QUERY_NETWORK_LOCK, clck_pn, sizeof(clck_pn), 1200);
+    send_at_command_sync(AT_CMD_QUERY_SUBSET_LOCK,  clck_pu, sizeof(clck_pu), 1200);
+    send_at_command_sync(AT_CMD_QUERY_SP_LOCK,      clck_pp, sizeof(clck_pp), 1200);
+    send_at_command_sync(AT_CMD_QUERY_CORP_LOCK,    clck_pc, sizeof(clck_pc), 1200);
+    send_at_command_sync(AT_CMD_QUERY_SIM_LOCK,     clck_sc, sizeof(clck_sc), 1200);
 
     const char *sim_state = "UNKNOWN";
     if (strstr(cpin_resp, "READY")) sim_state = "READY";
@@ -507,243 +609,224 @@ static void query_sim_locks(int verbose) {
     else if (strstr(cpin_resp, "NOT INSERTED") || strstr(cpin_resp, "ERROR: 10")) sim_state = "ABSENT";
     else if (strstr(cpin_resp, "ERROR")) sim_state = "MODEM_ERROR";
 
-    const char *pn_lock = (strstr(clck_pn, "+CLCK: 0") || strstr(clck_pn, "+CLCK:0")) ? "UNLOCKED(0)" :
-                          (strstr(clck_pn, "+CLCK: 1") || strstr(clck_pn, "+CLCK:1")) ? "LOCKED(1)" : "UNKNOWN";
-
-    const char *pu_lock = (strstr(clck_pu, "+CLCK: 0") || strstr(clck_pu, "+CLCK:0")) ? "UNLOCKED(0)" :
-                          (strstr(clck_pu, "+CLCK: 1") || strstr(clck_pu, "+CLCK:1")) ? "LOCKED(1)" : "UNKNOWN";
-
-    const char *pp_lock = (strstr(clck_pp, "+CLCK: 0") || strstr(clck_pp, "+CLCK:0")) ? "UNLOCKED(0)" :
-                          (strstr(clck_pp, "+CLCK: 1") || strstr(clck_pp, "+CLCK:1")) ? "LOCKED(1)" : "UNKNOWN";
-
-    const char *pc_lock = (strstr(clck_pc, "+CLCK: 0") || strstr(clck_pc, "+CLCK:0")) ? "UNLOCKED(0)" :
-                          (strstr(clck_pc, "+CLCK: 1") || strstr(clck_pc, "+CLCK:1")) ? "LOCKED(1)" : "UNKNOWN";
-
-    const char *sc_lock = (strstr(clck_sc, "+CLCK: 0") || strstr(clck_sc, "+CLCK:0")) ? "UNLOCKED(0)" :
-                          (strstr(clck_sc, "+CLCK: 1") || strstr(clck_sc, "+CLCK:1")) ? "LOCKED(1)" : "UNKNOWN";
-
     if (verbose) {
         printf("=== SIM & Network Personalization Locks ===\n");
         printf("  SIM State (CPIN)             : %s\n", sim_state);
-        printf("  Network Lock (CLCK:PN)       : %s\n", pn_lock);
-        printf("  Network Subset Lock (CLCK:PU): %s\n", pu_lock);
-        printf("  Service Provider Lock (PP)   : %s\n", pp_lock);
-        printf("  Corporate Lock (CLCK:PC)     : %s\n", pc_lock);
-        printf("  SIM Lock (CLCK:SC)           : %s\n", sc_lock);
-    } else {
-        printf("SIMLOCK|CPIN=%s|PN=%s|PU=%s|PP=%s|PC=%s|SC=%s\n",
-               sim_state, pn_lock, pu_lock, pp_lock, pc_lock, sc_lock);
+        printf("  Network Lock (CLCK:PN)       : %s\n", clck_state(clck_pn));
+        printf("  Network Subset Lock (CLCK:PU): %s\n", clck_state(clck_pu));
+        printf("  Service Provider Lock (PP)   : %s\n", clck_state(clck_pp));
+        printf("  Corporate Lock (CLCK:PC)     : %s\n", clck_state(clck_pc));
+        printf("  SIM Lock (CLCK:SC)           : %s\n", clck_state(clck_sc));
     }
+    printf(SIMLOCK_FORMAT_STRING,
+           sim_state, clck_state(clck_pn), clck_state(clck_pu),
+           clck_state(clck_pp), clck_state(clck_pc), clck_state(clck_sc));
     fflush(stdout);
 }
 
-/* ============================================================================
- *  9. وظائف سبرينت وبوست (/boost Sprint & Boost Mobile Unlock)
- * ============================================================================ */
+/* =========================================================================
+ *  13. BOOST / SPRINT UNLOCK  (5 steps — always ends with .OK_BOOST.. marker)
+ * ========================================================================= */
 static int execute_boost_unlock(int verbose) {
-    if (verbose) printf("[*] Starting Sprint / Boost Mobile Unlock sequence...\n");
-
     char resp[RESP_BUF_SIZE] = {0};
 
-    /* 1. إرسال أمر فك قفل سبرينت القديم */
-    if (verbose) printf("  [1/5] Sending AT+UNLOCKSPR=OLD\n");
-    send_at_command_sync("AT+UNLOCKSPR=OLD", resp, sizeof(resp), 1500);
+    if (verbose) printf("[*] Starting Sprint / Boost Mobile unlock sequence...\n");
 
-    /* 2. تصفير معلمات قفل الشريحة */
-    if (verbose) printf("  [2/5] Sending AT+SIMLOCKU=0,0,0\n");
-    send_at_command_sync("AT+SIMLOCKU=0,0,0", resp, sizeof(resp), 1500);
+    if (verbose) printf("  [1/5] Sending " AT_CMD_UNLOCKSPR_OLD);
+    send_at_command_sync(AT_CMD_UNLOCKSPR_OLD, resp, sizeof(resp), 1500);
 
-    /* 3. إلغاء تثبيت وإيقاف حزم قفل المشغل الخاصة بسبرينت */
-    if (verbose) printf("  [3/5] Cleaning up Sprint OMADM & Carrier Lock packages...\n");
+    if (verbose) printf("  [2/5] Sending " AT_CMD_SIMLOCKU_RESET);
+    send_at_command_sync(AT_CMD_SIMLOCKU_RESET, resp, sizeof(resp), 1500);
+
+    if (verbose) printf("  [3/5] Neutralizing Sprint OMADM & carrier-lock packages...\n");
     system(CMD_UNINSTALL_OMADMSPR);
     system(CMD_UNINSTALL_AUTOPRECONFIG);
     system(CMD_FORCESTOP_SKATD);
 
-    /* 4. تفريغ سجلات الراديو */
     if (verbose) printf("  [4/5] Flushing radio logcat...\n");
     system(CMD_FLUSH_RADIO_LOGS);
 
-    /* 5. إعادة تشغيل الراديو لتطبيق الإعدادات */
     if (verbose) printf("  [5/5] Re-initializing radio modem (AT+CFUN=1,1)...\n");
-    send_at_command_sync("AT+CFUN=1,1", resp, sizeof(resp), 2000);
+    send_at_command_sync(AT_CMD_REBOOT_RADIO, resp, sizeof(resp), 2000);
 
-    if (verbose) printf("[+] Sprint/Boost Unlock sequence completed successfully.\n");
-    else printf(".OK_BOOST..\n");
+    if (verbose) printf("[+] Sprint/Boost unlock sequence completed.\n");
+    printf(MARK_OK_BOOST);
     fflush(stdout);
     return 0;
 }
 
-/* ============================================================================
- *  10. إعادة قفل المشغل عبر حزمة BCD MCC/MNC (Carrier Relock / SRELOCK1 / SETSPR)
- * ============================================================================ */
+/* =========================================================================
+ *  14. CARRIER RELOCK (SRELOCK1 / SETSPR — MCCREQ BCD payload)
+ * ========================================================================= */
 static int execute_carrier_relock(const char *mcc_mnc_bcd_hex, int verbose) {
-    if (!mcc_mnc_bcd_hex || strlen(mcc_mnc_bcd_hex) < 6) {
-        if (verbose) printf("[ERROR] Invalid MCC/MNC BCD Hex format: %s\n", mcc_mnc_bcd_hex ? mcc_mnc_bcd_hex : "NULL");
-        else printf(".ERR_RELOCK_INVALID..\n");
+    if (!mcc_mnc_bcd_hex || strlen(mcc_mnc_bcd_hex) < 6 ||
+        strspn(mcc_mnc_bcd_hex, "0123456789ABCDEFabcdef") != strlen(mcc_mnc_bcd_hex)) {
+        if (verbose)
+            printf("[ERROR] Invalid MCC/MNC BCD hex payload: %s "
+                   "(expected >= 6 hex chars, e.g. 421F0100)\n",
+                   mcc_mnc_bcd_hex ? mcc_mnc_bcd_hex : "NULL");
+        printf(MARK_ERR_RELOCK_INVALID);
+        fflush(stdout);
         return -1;
     }
 
-    if (verbose) printf("[*] Executing Carrier Relock for BCD payload: %s\n", mcc_mnc_bcd_hex);
+    if (verbose) printf("[*] Executing carrier relock for BCD payload: %s\n", mcc_mnc_bcd_hex);
 
-    /* بناء حزمة IPC الخاصة بأمر SRELOCK1 / SETSPR */
-    char pkt[256];
-    uint8_t bin[128];
+    /* SRELOCK1 / SETSPR frame: 06 01 <LEN:4hex> 00 00 <BCD payload> */
+    char pkt[512];
+    uint8_t bin[256];
     uint8_t resp[RESP_BUF_SIZE];
 
-    /* إطار تهيئة الـ Relock: 06 01 [Length] 00 00 [BCD Payload] */
-    int hex_len = strlen(mcc_mnc_bcd_hex);
+    int hex_len = (int)strlen(mcc_mnc_bcd_hex);
     int total_bytes = 4 + (hex_len / 2);
-    snprintf(pkt, sizeof(pkt), "0601%04X0000%s", total_bytes, mcc_mnc_bcd_hex);
+    snprintf(pkt, sizeof(pkt), IPC_RELOCK_FMT, (unsigned)total_bytes, mcc_mnc_bcd_hex);
 
     int bin_len = hex2bin(pkt, bin, sizeof(bin));
     if (verbose) printf("  Dispatching SRELOCK1 frame: %s\n", pkt);
     int r = dispatch_ipc_frame(bin, bin_len, resp, sizeof(resp));
-
-    /* إعادة تنشيط الراديو */
-    char at_resp[256] = {0};
-    send_at_command_sync("AT+CFUN=1,1", at_resp, sizeof(at_resp), 1500);
-
-    if (verbose) {
-        printf("[+] Carrier Relock dispatched (RIL result: %d bytes). Radio reset initiated.\n", r);
-    } else {
-        printf(".OK_RELOCK..\n");
+    if (verbose && r > 0) {
+        char resp_hex[RESP_BUF_SIZE * 2 + 1];
+        bin2hex(resp, r, resp_hex);
+        printf("  RIL response (%d bytes): %s\n", r, resp_hex);
     }
+
+    /* radio refresh to enforce the profile */
+    char at_resp[256] = {0};
+    send_at_command_sync(AT_CMD_REBOOT_RADIO, at_resp, sizeof(at_resp), 1500);
+
+    if (verbose) printf("[+] Carrier relock dispatched. Radio reset initiated.\n");
+    printf(MARK_OK_RELOCK);
     fflush(stdout);
     return 0;
 }
 
-/* ============================================================================
- *  11. معلومات وهوية الهاتف العميقة (Deep Telemetry: DEVCONINFO + VERSNAME + IMEI)
- * ============================================================================ */
+/* =========================================================================
+ *  15. DEEP TELEMETRY (DEVINFO)
+ * ========================================================================= */
 static void clean_crlf(char *s) {
-    char *p = s;
-    while (*p) {
+    for (char *p = s; *p; p++)
         if (*p == '\r' || *p == '\n') *p = ' ';
-        p++;
-    }
 }
 
 static void print_full_telemetry(int verbose) {
     char model[64], brand[64], csc[64], ver[64], patch[64], build[64], serial[64], prod[64];
-    fast_getprop("ro.product.model", model, sizeof(model));
-    fast_getprop("ro.product.brand", brand, sizeof(brand));
-    fast_getprop("ro.csc.sales_code", csc, sizeof(csc));
-    fast_getprop("ro.build.version.release", ver, sizeof(ver));
+    fast_getprop("ro.product.model",             model,  sizeof(model));
+    fast_getprop("ro.product.brand",             brand,  sizeof(brand));
+    fast_getprop("ro.csc.sales_code",            csc,    sizeof(csc));
+    fast_getprop("ro.build.version.release",     ver,    sizeof(ver));
     fast_getprop("ro.build.version.security_patch", patch, sizeof(patch));
-    fast_getprop("ro.build.display.id", build, sizeof(build));
-    fast_getprop("ro.boot.serialno", serial, sizeof(serial));
-    fast_getprop("ril.product_code", prod, sizeof(prod));
+    fast_getprop("ro.build.display.id",          build,  sizeof(build));
+    fast_getprop("ro.boot.serialno",             serial, sizeof(serial));
+    fast_getprop("ril.product_code",             prod,   sizeof(prod));
 
-    /* قراءة أوامر AT الميدانية من المودم مباشرة */
     char devcon[RESP_BUF_SIZE] = {0};
-    char vers_sw[256] = {0};
-    char imei[256] = {0};
-    char imsi[256] = {0};
-    char sn_at[256] = {0};
-    char batt[256] = {0};
-    char sysscope[256] = {0};
+    char vers_sw[256] = {0}, imei[256] = {0}, imsi[256] = {0}, sn_at[256] = {0};
+    char batt[256] = {0}, sysscope[256] = {0};
 
-    send_at_command_sync("AT+DEVCONINFO", devcon, sizeof(devcon), 2000);
-    send_at_command_sync("AT+VERSNAME=1,9,0", vers_sw, sizeof(vers_sw), 1200);
-    send_at_command_sync("AT+IMEITEST=1,0", imei, sizeof(imei), 1200);
-    send_at_command_sync("AT+SERIALNO=1,0", sn_at, sizeof(sn_at), 1200);
-    send_at_command_sync("AT+CIMI", imsi, sizeof(imsi), 1200);
-    send_at_command_sync("AT+BATTEST=1,0", batt, sizeof(batt), 1200);
-    send_at_command_sync("AT+SYSSCOPE=1,0", sysscope, sizeof(sysscope), 1200);
+    send_at_command_sync(AT_CMD_DEVCONINFO,     devcon,  sizeof(devcon),  2000);
+    send_at_command_sync(AT_CMD_VERSNAME_SW,    vers_sw, sizeof(vers_sw), 1200);
+    send_at_command_sync(AT_CMD_IMEITEST,       imei,    sizeof(imei),    1200);
+    send_at_command_sync(AT_CMD_SERIALNO,       sn_at,   sizeof(sn_at),   1200);
+    send_at_command_sync(AT_CMD_CIMI,           imsi,    sizeof(imsi),    1200);
+    send_at_command_sync(AT_CMD_BATTEST,        batt,    sizeof(batt),    1200);
+    send_at_command_sync(AT_CMD_SYSSCOPE,       sysscope,sizeof(sysscope),1200);
 
-    clean_crlf(devcon);
-    clean_crlf(vers_sw);
-    clean_crlf(imei);
-    clean_crlf(imsi);
-    clean_crlf(sn_at);
-    clean_crlf(batt);
+    clean_crlf(devcon);   clean_crlf(vers_sw);  clean_crlf(imei);
+    clean_crlf(imsi);     clean_crlf(sn_at);    clean_crlf(batt);
     clean_crlf(sysscope);
 
     if (verbose) {
         printf("=== Deep Telemetry & Hardware Identification ===\n");
-        printf("  Model         : %s\n", model);
-        printf("  Brand         : %s\n", brand);
-        printf("  CSC Code      : %s\n", csc);
-        printf("  Android Ver   : %s\n", ver);
-        printf("  Security Patch: %s\n", patch);
-        printf("  Build ID      : %s\n", build);
-        printf("  Serial (Prop) : %s\n", serial);
-        printf("  Product Code  : %s\n", prod);
-        printf("  DEVCONINFO    : %s\n", devcon);
-        printf("  VERSNAME SW   : %s\n", vers_sw);
-        printf("  IMEITEST      : %s\n", imei);
-        printf("  SERIALNO AT   : %s\n", sn_at);
-        printf("  CIMI (IMSI)   : %s\n", imsi);
-        printf("  BATTEST       : %s\n", batt);
-        printf("  SYSSCOPE      : %s\n", sysscope);
+        printf("  Model         : %s\n",  model);
+        printf("  Brand         : %s\n",  brand);
+        printf("  CSC Code      : %s\n",  csc);
+        printf("  Android Ver   : %s\n",  ver);
+        printf("  Security Patch: %s\n",  patch);
+        printf("  Build ID      : %s\n",  build);
+        printf("  Serial (Prop) : %s\n",  serial);
+        printf("  Product Code  : %s\n",  prod);
+        printf("  DEVCONINFO    : %s\n",  devcon);
+        printf("  VERSNAME SW   : %s\n",  vers_sw);
+        printf("  IMEITEST      : %s\n",  imei);
+        printf("  SERIALNO AT   : %s\n",  sn_at);
+        printf("  CIMI (IMSI)   : %s\n",  imsi);
+        printf("  BATTEST       : %s\n",  batt);
+        printf("  SYSSCOPE      : %s\n",  sysscope);
         printf("  Active Channel: %s (%d)\n", g_ctx.active_path, g_ctx.mode);
-    } else {
-        printf("DEVINFO|MODEL=%s|BRAND=%s|CSC=%s|AND=%s|PATCH=%s|BUILD=%s|SN=%s|PROD=%s|VERS=%s|IMEI=%s|IMSI=%s|DEVCON=%s\n",
-               model, brand, csc, ver, patch, build, serial, prod, vers_sw, imei, imsi, devcon);
     }
+    printf(DEVINFO_FORMAT_STRING,
+           model, brand, csc, ver, patch, build, serial, prod,
+           vers_sw, imei, imsi, devcon);
     fflush(stdout);
 }
 
-/* ============================================================================
- *  12. التحكم في الراديو والطاقة (Radio & Power Actions)
- * ============================================================================ */
+/* =========================================================================
+ *  16. RADIO & POWER ACTIONS
+ * ========================================================================= */
 static int execute_radio_action(const char *action, int verbose) {
     char resp[RESP_BUF_SIZE] = {0};
+    const char *cmd = NULL;
 
     if (strcasecmp(action, "REBOOT") == 0 || strcasecmp(action, "RESET") == 0) {
-        if (verbose) printf("[*] Executing Radio Soft Reboot (AT+CFUN=1,1)...\n");
-        send_at_command_sync("AT+CFUN=1,1", resp, sizeof(resp), 2000);
+        cmd = AT_CMD_REBOOT_RADIO;
+        if (verbose) printf("[*] Radio soft reboot (AT+CFUN=1,1)...\n");
     } else if (strcasecmp(action, "OFF") == 0 || strcasecmp(action, "AIRPLANE") == 0) {
-        if (verbose) printf("[*] Turning Radio Off (AT+CFUN=0)...\n");
-        send_at_command_sync("AT+CFUN=0", resp, sizeof(resp), 2000);
+        cmd = AT_CMD_RADIO_OFF;
+        if (verbose) printf("[*] Radio off / airplane (AT+CFUN=0)...\n");
     } else if (strcasecmp(action, "ON") == 0) {
-        if (verbose) printf("[*] Turning Radio On (AT+CFUN=1)...\n");
-        send_at_command_sync("AT+CFUN=1", resp, sizeof(resp), 2000);
+        cmd = AT_CMD_RADIO_ON;
+        if (verbose) printf("[*] Radio on (AT+CFUN=1)...\n");
     } else if (strcasecmp(action, "FACTORST") == 0) {
-        if (verbose) printf("[*] Modem NV Factory Reset (AT+FACTORST=0,0)...\n");
-        send_at_command_sync("AT+FACTORST=0,0", resp, sizeof(resp), 3000);
+        cmd = AT_CMD_MODEM_FACTORY_RESET;
+        if (verbose) printf("[*] Modem NV factory reset (AT+FACTORST=0,0)...\n");
     } else if (strcasecmp(action, "SWRESET") == 0) {
-        if (verbose) printf("[*] Rebooting Phone (AT+SWRESET)...\n");
-        send_at_command_sync("AT+SWRESET", resp, sizeof(resp), 2000);
+        cmd = AT_CMD_SWRESET;
+        if (verbose) printf("[*] Full phone reboot (AT+SWRESET)...\n");
     } else {
         if (verbose) printf("[ERROR] Unknown radio action: %s\n", action);
-        else printf(".ERR_UNKNOWN_ACTION..\n");
+        printf(MARK_ERR_UNKNOWN_ACTION);
+        fflush(stdout);
         return -1;
     }
 
+    send_at_command_sync(cmd, resp, sizeof(resp), 3000);
+    clean_crlf(resp);
     if (verbose) printf("[+] Radio action '%s' executed. Response: %s\n", action, resp);
-    else printf(".OK_RADIO..\n");
+    printf(MARK_OK_RADIO);
     fflush(stdout);
     return 0;
 }
 
-/* ============================================================================
- *  13. التحدي الأمني والمصادقة (Security Challenge: AKSEEDNO)
- * ============================================================================ */
+/* =========================================================================
+ *  17. SECURITY CHALLENGE (AKSEED)
+ * ========================================================================= */
 static void query_akseedno(int verbose) {
     char resp[RESP_BUF_SIZE] = {0};
-    send_at_command_sync("AT+AKSEEDNO=1,0", resp, sizeof(resp), 2000);
+    send_at_command_sync(AT_CMD_AKSEEDNO_REQ, resp, sizeof(resp), 2000);
     clean_crlf(resp);
 
     if (verbose) {
         printf("=== Modem Access Key Seed (Challenge) ===\n");
         printf("  Result: %s\n", resp);
-    } else {
-        printf("AKSEED|%s\n", resp);
     }
+    printf(AKSEED_FORMAT_STRING, resp);
     fflush(stdout);
 }
 
-/* ============================================================================
- *  14. محرك تغيير CSC المدمج (Self-Contained 5-Packet Samsung CSC Injection)
- * ============================================================================ */
+/* =========================================================================
+ *  18. SAMSUNG CSC ENGINE — 5 IPC packets + AT chain + setprop + verify
+ * ========================================================================= */
 static int execute_samsung_csc_change(const char *target_csc, int verbose) {
     if (!target_csc || strlen(target_csc) < 2 || strlen(target_csc) > 5) {
-        if (verbose) printf("[ERROR] Invalid CSC code: %s (must be 2-5 uppercase chars)\n", target_csc ? target_csc : "NULL");
-        else printf(".ERR_CSC_INVALID..\n");
+        if (verbose)
+            printf("[ERROR] Invalid CSC code: %s (must be 2-5 chars, e.g. XAA)\n",
+                   target_csc ? target_csc : "NULL");
+        printf(MARK_ERR_CSC_INVALID);
+        fflush(stdout);
         return -1;
     }
 
+    /* normalize to uppercase */
     char clean_csc[8] = {0};
     for (int i = 0; target_csc[i] && i < 5; i++) {
         char c = target_csc[i];
@@ -752,111 +835,139 @@ static int execute_samsung_csc_change(const char *target_csc, int verbose) {
     }
 
     char hex_csc[16] = {0};
-    for (int i = 0; clean_csc[i]; i++) {
+    for (int i = 0; clean_csc[i]; i++)
         sprintf(hex_csc + (i * 2), "%02X", (uint8_t)clean_csc[i]);
-    }
 
-    if (verbose) printf("[*] Starting Samsung CSC change to: %s (Hex: %s)\n", clean_csc, hex_csc);
+    if (verbose)
+        printf("[*] Starting Samsung CSC change to: %s (hex: %s)\n", clean_csc, hex_csc);
 
-    char pkt[256];
-    uint8_t bin[128];
+    char pkt[512];
+    uint8_t bin[256];
     uint8_t resp[RESP_BUF_SIZE];
+    int r;
 
-    /* Packet 1: 0601000E0000{hexCsc}0000{hexCsc} */
-    snprintf(pkt, sizeof(pkt), "0601000E0000%s0000%s", hex_csc, hex_csc);
-    int l1 = hex2bin(pkt, bin, sizeof(bin));
+    /* --- Phase 1: the 5-packet IPC injection ------------------------- */
+    snprintf(pkt, sizeof(pkt), IPC_CSC_PKT1_FMT, hex_csc, hex_csc);
+    r = hex2bin(pkt, bin, sizeof(bin));
     if (verbose) printf("  [1/5] Injecting: %s\n", pkt);
-    dispatch_ipc_frame(bin, l1, resp, sizeof(resp));
+    dispatch_ipc_frame(bin, r, resp, sizeof(resp));
 
-    /* Packet 2: 060100090000{hexCsc} */
-    snprintf(pkt, sizeof(pkt), "060100090000%s", hex_csc);
-    int l2 = hex2bin(pkt, bin, sizeof(bin));
+    snprintf(pkt, sizeof(pkt), IPC_CSC_PKT2_FMT, hex_csc);
+    r = hex2bin(pkt, bin, sizeof(bin));
     if (verbose) printf("  [2/5] Injecting: %s\n", pkt);
-    dispatch_ipc_frame(bin, l2, resp, sizeof(resp));
+    dispatch_ipc_frame(bin, r, resp, sizeof(resp));
 
-    /* Packet 3: 060100120000{hexCsc}0000{hexCsc}{hexCsc} */
-    snprintf(pkt, sizeof(pkt), "060100120000%s0000%s%s", hex_csc, hex_csc, hex_csc);
-    int l3 = hex2bin(pkt, bin, sizeof(bin));
+    snprintf(pkt, sizeof(pkt), IPC_CSC_PKT3_FMT, hex_csc, hex_csc, hex_csc);
+    r = hex2bin(pkt, bin, sizeof(bin));
     if (verbose) printf("  [3/5] Injecting: %s\n", pkt);
-    dispatch_ipc_frame(bin, l3, resp, sizeof(resp));
+    dispatch_ipc_frame(bin, r, resp, sizeof(resp));
 
-    /* Packet 4: 060100120000 */
-    snprintf(pkt, sizeof(pkt), "060100120000");
-    int l4 = hex2bin(pkt, bin, sizeof(bin));
+    snprintf(pkt, sizeof(pkt), "%s", IPC_CSC_PKT4_STR);
+    r = hex2bin(pkt, bin, sizeof(bin));
     if (verbose) printf("  [4/5] Injecting: %s\n", pkt);
-    dispatch_ipc_frame(bin, l4, resp, sizeof(resp));
+    dispatch_ipc_frame(bin, r, resp, sizeof(resp));
 
-    /* Packet 5: 060100090000{hexCsc} */
-    snprintf(pkt, sizeof(pkt), "060100090000%s", hex_csc);
-    int l5 = hex2bin(pkt, bin, sizeof(bin));
+    snprintf(pkt, sizeof(pkt), IPC_CSC_PKT5_FMT, hex_csc);
+    r = hex2bin(pkt, bin, sizeof(bin));
     if (verbose) printf("  [5/5] Injecting: %s\n", pkt);
-    dispatch_ipc_frame(bin, l5, resp, sizeof(resp));
+    dispatch_ipc_frame(bin, r, resp, sizeof(resp));
 
-    /* Multi-Modal AT Sequence (Works on Qualcomm and Exynos modems) */
+    /* --- Phase 2: canonical AT chain (SWATD/ACTIVATE/PRECONFG/RFBYCODE) - */
     char at_cmd[128];
-    char at_resp[256] = {0};
-    send_at_command_sync("AT+SWATD=0", at_resp, sizeof(at_resp), 1000);
-    send_at_command_sync("AT+ACTIVATE=0,0,0", at_resp, sizeof(at_resp), 1000);
-    send_at_command_sync("AT+SWATD=1", at_resp, sizeof(at_resp), 1000);
-    snprintf(at_cmd, sizeof(at_cmd), "AT+PRECONFG=2,%s", clean_csc);
-    send_at_command_sync(at_cmd, at_resp, sizeof(at_resp), 1500);
-    send_at_command_sync("AT+PRECONFG=1,0", at_resp, sizeof(at_resp), 1000);
-    snprintf(at_cmd, sizeof(at_cmd), "AT+RFBYCODE=2,0,%s", clean_csc);
+    char at_resp[512] = {0};
+
+    send_at_command_sync(AT_CMD_SWATD_0, at_resp, sizeof(at_resp), 1000);
+    send_at_command_sync(AT_CMD_ACTIVATE, at_resp, sizeof(at_resp), 1000);
+    send_at_command_sync(AT_CMD_SWATD_1, at_resp, sizeof(at_resp), 1000);
+
+    snprintf(at_cmd, sizeof(at_cmd), AT_CMD_PRECONFG_WRITE_FMT, clean_csc);
+    send_at_command_sync(at_cmd, at_resp, sizeof(at_resp), 2000);
+    if (verbose) { clean_crlf(at_resp);
+        printf("  AT+PRECONFG=2,%s -> %s\n", clean_csc, at_resp); }
+
+    /* --- Phase 3: verify by reading back ------------------------------ */
+    char verify[512] = {0};
+    send_at_command_sync(AT_CMD_PRECONFG_READ, verify, sizeof(verify), 1500);
+    clean_crlf(verify);
+    int verified = strstr(verify, clean_csc) != NULL;
+    if (verbose)
+        printf("  Verify AT+PRECONFG=1,0 -> %s  [%s]\n", verify,
+               verified ? "MATCH" : "NO MATCH (will rely on setprop)");
+
+    snprintf(at_cmd, sizeof(at_cmd), AT_CMD_RFBYCODE_FMT, clean_csc);
     send_at_command_sync(at_cmd, at_resp, sizeof(at_resp), 1000);
 
-    /* Persistent System Properties & Broadcast Injection */
-    char prop_cmd[256];
+    /* --- Phase 4: persistent system properties + broadcast ------------ */
+    char prop_cmd[320];
     snprintf(prop_cmd, sizeof(prop_cmd),
              "setprop persist.sys.omc_sales_code %s; "
              "setprop persist.sys.sales_code %s; "
+             "setprop persist.sys.prev_salescode $(getprop ro.csc.sales_code); "
              "setprop ro.csc.sales_code %s; "
-             "am broadcast -a com.samsung.intent.action.CSC_COMPLETED --es csc %s >/dev/null 2>&1",
+             "am broadcast -a com.samsung.intent.action.CSC_COMPLETED "
+             "--es csc %s >/dev/null 2>&1",
              clean_csc, clean_csc, clean_csc, clean_csc);
     system(prop_cmd);
 
-    if (verbose) {
-        printf("[*] CSC change sequence completed for: %s\n", clean_csc);
-        printf("[*] Running carrier package cleanup...\n");
-    }
-
+    /* --- Phase 5: carrier package cleanup + radio flush ---------------- */
+    if (verbose) printf("[*] Running carrier package cleanup...\n");
     system(CMD_UNINSTALL_AUTOPRECONFIG);
     system(CMD_UNINSTALL_OMADMSPR);
+    system(CMD_UNINSTALL_CARRIER_CODE_CHANGER);
     system(CMD_FLUSH_RADIO_LOGS);
 
-    if (verbose) printf("[+] Samsung CSC change successful.\n");
-    else printf(".OK_CSC..\n");
+    if (verbose) printf("[+] Samsung CSC change completed for: %s (verified=%s)\n",
+                         clean_csc, verified ? "yes" : "via-fallback");
+    printf(MARK_OK_CSC);
     fflush(stdout);
     return 0;
 }
 
-/* ============================================================================
- *  15. معلومات الهاتف ومعلومات المساعدة
- * ============================================================================ */
+/* =========================================================================
+ *  19. BANNER / STATUS / PROPS / VERSION
+ * ========================================================================= */
 static void print_compact_info(void) {
     char model[64], csc[64], ver[64], patch[64], debug_lvl[64];
-    fast_getprop("ro.product.model", model, sizeof(model));
-    fast_getprop("ro.csc.sales_code", csc, sizeof(csc));
-    fast_getprop("ro.build.version.release", ver, sizeof(ver));
-    fast_getprop("ro.build.version.security_patch", patch, sizeof(patch));
-    fast_getprop("ro.boot.debug_level", debug_lvl, sizeof(debug_lvl));
+    fast_getprop("ro.product.model",                 model, sizeof(model));
+    fast_getprop("ro.csc.sales_code",                csc,   sizeof(csc));
+    fast_getprop("ro.build.version.release",         ver,   sizeof(ver));
+    fast_getprop("ro.build.version.security_patch",  patch, sizeof(patch));
+    fast_getprop("ro.boot.debug_level",              debug_lvl, sizeof(debug_lvl));
 
-    printf("INFO|MODEL=%s|CSC=%s|AND=%s|PATCH=%s|DBG=%s|UID=%d|CH=%s\n",
+    printf(TELEMETRY_FORMAT_STRING,
            model, csc, ver, patch, debug_lvl, getuid(),
            g_ctx.mode != CH_NONE ? g_ctx.active_path : "NONE");
     fflush(stdout);
 }
 
+static void print_version(void) {
+    printf(VERSION_FORMAT_STRING, g_ctx.active_path, (int)g_ctx.mode);
+    fflush(stdout);
+}
+
+static void print_props(void) {
+    printf("PROPS|");
+    for (int i = 0; ALL_SYSTEM_PROPERTIES[i] != NULL; i++) {
+        char val[96] = {0};
+        fast_getprop(ALL_SYSTEM_PROPERTIES[i], val, sizeof(val));
+        printf("%s=%s%s", ALL_SYSTEM_PROPERTIES[i], val,
+               ALL_SYSTEM_PROPERTIES[i + 1] ? "|" : "");
+    }
+    printf("\n");
+    fflush(stdout);
+}
+
 static void print_detailed_status(void) {
     char model[64], csc[64], ver[64], patch[64], debug_lvl[64], brand[64], serial[64];
-    fast_getprop("ro.product.model", model, sizeof(model));
-    fast_getprop("ro.product.brand", brand, sizeof(brand));
-    fast_getprop("ro.csc.sales_code", csc, sizeof(csc));
-    fast_getprop("ro.build.version.release", ver, sizeof(ver));
+    fast_getprop("ro.product.model",                model, sizeof(model));
+    fast_getprop("ro.product.brand",                brand, sizeof(brand));
+    fast_getprop("ro.csc.sales_code",               csc,   sizeof(csc));
+    fast_getprop("ro.build.version.release",        ver,   sizeof(ver));
     fast_getprop("ro.build.version.security_patch", patch, sizeof(patch));
-    fast_getprop("ro.boot.debug_level", debug_lvl, sizeof(debug_lvl));
-    fast_getprop("ro.boot.serialno", serial, sizeof(serial));
+    fast_getprop("ro.boot.debug_level",             debug_lvl, sizeof(debug_lvl));
+    fast_getprop("ro.boot.serialno",                serial, sizeof(serial));
 
-    printf("=== Device Status ===\n");
+    printf("=== Device Status (GsmTools Bridge v%s) ===\n", GT_VERSION);
     printf("  Product Brand  : %s\n", brand);
     printf("  Product Model  : %s\n", model);
     printf("  Serial Number  : %s\n", serial);
@@ -867,106 +978,102 @@ static void print_detailed_status(void) {
     printf("  Process UID    : %d\n", getuid());
     printf("  Active Channel : %s (%s)\n",
            g_ctx.mode != CH_NONE ? g_ctx.active_path : "NONE",
-           g_ctx.mode == CH_RILD_PARCEL ? "RILD Parcel" :
-           g_ctx.mode == CH_DEV_IPC_RAW ? "Raw IPC" :
-           g_ctx.mode == CH_DEV_AT_TTY ? "AT TTY" :
-           g_ctx.mode == CH_TCP_RELAY_2600 ? "TCP Port 2600 Relay" : "Disconnected");
+           g_ctx.mode == CH_SECRIL_LIB    ? "libsecril-client" :
+           g_ctx.mode == CH_RILD_PARCEL   ? "RILD Parcel" :
+           g_ctx.mode == CH_DEV_IPC_RAW   ? "Raw IPC" :
+           g_ctx.mode == CH_DEV_AT_TTY    ? "AT TTY" :
+           g_ctx.mode == CH_TCP_RELAY_2600? "TCP Port 2600 Relay" : "Disconnected");
     query_sim_locks(1);
 }
 
+/* =========================================================================
+ *  20. HELP
+ * ========================================================================= */
 static void print_help(const char *prog_name) {
     printf("============================================================\n");
-    printf("  GsmTools - Samsung AT, RIL & Boost Multi-Modal Bridge (v3.0)\n");
+    printf("  GsmTools - Samsung AT / RIL / Boost Bridge (v%s)\n", GT_VERSION);
     printf("============================================================\n");
     printf("Usage: %s [OPTIONS]\n\n", prog_name);
-    printf("One-Shot CLI Options:\n");
-    printf("  -b, --boost, /boost  Execute Sprint / Boost Mobile unlock sequence\n");
-    printf("  -r <BCD_HEX>         Carrier Relock via BCD MCCREQ payload\n");
-    printf("  -t, --telemetry      Deep device telemetry (AT+DEVCONINFO, VERSNAME, etc.)\n");
+    printf("One-shot CLI options:\n");
     printf("  -c <CSC>             Quick Samsung CSC change (e.g. -c XAA)\n");
+    printf("  -b, --boost, /boost   Sprint / Boost unlock sequence\n");
+    printf("  -r <BCD_HEX>         Carrier relock (e.g. -r 421F0100)\n");
+    printf("  -t, --telemetry      Deep telemetry (DEVCONINFO, VERSNAME, ...)\n");
     printf("  -a <AT_CMD>          Send single AT command and exit\n");
     printf("  -x <HEX>             Send single hex IPC frame and exit\n");
-    printf("  -s                   Scan mode: list accessible modem & RIL devices\n");
-    printf("  -l                   Query SIM Card & Network Personalization locks\n");
-    printf("  --radio <ACT>        Execute radio action (REBOOT, OFF, ON, FACTORST, SWRESET)\n");
-    printf("  --seed               Query security challenge seed (AT+AKSEEDNO)\n");
+    printf("  -s                    Scan accessible modem & RIL channels\n");
+    printf("  -l                    Query SIM & network personalization locks\n");
+    printf("    --seed              Query security challenge (AT+AKSEEDNO=1,0)\n");
+    printf("    --radio <ACT>       REBOOT | OFF | ON | FACTORST | SWRESET\n");
     printf("  -d <DEVICE>          Force specific modem device path\n");
-    printf("  -p <PORT>            Escalation port (default: 2600)\n");
-    printf("  -v                   Verbose diagnostic output\n");
-    printf("  -h, --help           Show this help menu\n\n");
-    printf("Interactive Commands:\n");
-    printf("  BOOST, /boost        Sprint / Boost Mobile unlock sequence\n");
-    printf("  RELOCK:<BCD>         Carrier Relock with BCD MCC/MNC\n");
-    printf("  DEVINFO              Deep device telemetry header\n");
-    printf("  RADIO:<ACT>          Radio power & reboot control\n");
-    printf("  AKSEED               Modem security challenge query\n");
+    printf("  -p <PORT>            UID-1000 relay port (default 2600)\n");
+    printf("  -v                    Verbose diagnostic output\n");
+    printf("  -h, --help           This help\n\n");
+    printf("Interactive session commands:\n");
     printf("  CSC:<CODE>           Automated 5-packet Samsung CSC change\n");
-    printf("  AT+... or AT:<CMD>   Send raw AT command (e.g. AT+DEVCONINFO or AT:AT+DEVCONINFO)\n");
-    printf("  HEX:<DATA>           Send hex IPC command (or raw hex without prefix)\n");
-    printf("  SCAN                 Scan accessible modem channels\n");
-    printf("  STATUS               Display full device and channel status\n");
-    printf("  LOCKS                Query SIM & Network locks (CPIN, CLCK)\n");
-    printf("  RECONNECT            Re-probe and reconnect best modem channel\n");
-    printf("  MODE:AT              Switch to AT text channel\n");
-    printf("  MODE:IPC             Switch to IPC / RIL socket channel\n");
-    printf("  AUTH:<SEED>          Activate dynamic Xorshift32 stream cipher\n");
-    printf("  INFO                 Compact pipe-delimited telemetry header\n");
-    printf("  EXIT, QUIT           Terminate bridge session\n");
+    printf("  BOOST | /boost       Sprint / Boost unlock sequence\n");
+    printf("  RELOCK:<BCD>         Carrier relock with BCD MCC/MNC payload\n");
+    printf("  RADIO:<ACT>          Radio power & reboot control\n");
+    printf("  DEVINFO              Deep telemetry header\n");
+    printf("  AKSEED               Modem security challenge query\n");
+    printf("  AT+... or AT:<CMD>   Raw AT command (GETSPR/SETSPR/SRELOCK1 pass through)\n");
+    printf("  HEX:<DATA>           Hex IPC frame (or bare hex)\n");
+    printf("  SCAN | STATUS        Channel scan / full device status\n");
+    printf("  LOCKS                SIM & network lock query (CPIN + 5xCLCK)\n");
+    printf("  RECONNECT            Re-probe best modem channel\n");
+    printf("  MODE:AT | MODE:IPC   Switch channel preference\n");
+    printf("  AUTH:<SEED_HEX>      Activate Xorshift32 session cipher (HEX payloads)\n");
+    printf("  INFO | PROPS | VERSION  Compact telemetry / property dump / version\n");
+    printf("  EXIT, QUIT           Terminate session\n");
     printf("============================================================\n");
     fflush(stdout);
 }
 
-/* ============================================================================
- *  16. الدالة الرئيسية (CLI One-Shot & Interactive Loop)
- * ============================================================================ */
-
+/* =========================================================================
+ *  21. MAIN — CLI one-shot & interactive loop
+ * ========================================================================= */
 int main(int argc, char *argv[]) {
     signal(SIGINT,  sig_handler);
     signal(SIGTERM, sig_handler);
     signal(SIGPIPE, SIG_IGN);
 
-    const char *cli_csc = NULL;
-    const char *cli_at = NULL;
-    const char *cli_hex = NULL;
-    const char *cli_dev = NULL;
-    const char *cli_relock = NULL;
-    const char *cli_radio = NULL;
-    int cli_boost = 0;
-    int cli_telemetry = 0;
-    int cli_seed = 0;
-    int cli_scan = 0;
-    int cli_locks = 0;
-    int esc_port = 2600;
+    const char *cli_csc = NULL, *cli_at = NULL, *cli_hex = NULL;
+    const char *cli_dev = NULL, *cli_relock = NULL, *cli_radio = NULL;
+    int cli_boost = 0, cli_telemetry = 0, cli_seed = 0;
+    int cli_scan = 0, cli_locks = 0;
+    int esc_port = RELAY_PORT_DEFAULT;
 
     for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+        if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
             print_help(argv[0]);
             return 0;
-        } else if (strcmp(argv[i], "-v") == 0) {
+        } else if (!strcmp(argv[i], "-v")) {
             g_verbose = 1;
-        } else if (strcmp(argv[i], "-s") == 0) {
+        } else if (!strcmp(argv[i], "-s")) {
             cli_scan = 1;
-        } else if (strcmp(argv[i], "-l") == 0) {
+        } else if (!strcmp(argv[i], "-l")) {
             cli_locks = 1;
-        } else if (strcmp(argv[i], "-b") == 0 || strcmp(argv[i], "--boost") == 0 || strcmp(argv[i], "/boost") == 0 || strcmp(argv[i], "-boost") == 0 || strcmp(argv[i], "boost") == 0) {
+        } else if (!strcmp(argv[i], "-b") || !strcmp(argv[i], "--boost") ||
+                   !strcmp(argv[i], "/boost") || !strcmp(argv[i], "-boost") ||
+                   !strcmp(argv[i], "boost")) {
             cli_boost = 1;
-        } else if (strcmp(argv[i], "-t") == 0 || strcmp(argv[i], "--telemetry") == 0) {
+        } else if (!strcmp(argv[i], "-t") || !strcmp(argv[i], "--telemetry")) {
             cli_telemetry = 1;
-        } else if (strcmp(argv[i], "--seed") == 0) {
+        } else if (!strcmp(argv[i], "--seed")) {
             cli_seed = 1;
-        } else if (strcmp(argv[i], "-c") == 0 && i + 1 < argc) {
+        } else if (!strcmp(argv[i], "-c") && i + 1 < argc) {
             cli_csc = argv[++i];
-        } else if (strcmp(argv[i], "-r") == 0 && i + 1 < argc) {
+        } else if (!strcmp(argv[i], "-r") && i + 1 < argc) {
             cli_relock = argv[++i];
-        } else if (strcmp(argv[i], "--radio") == 0 && i + 1 < argc) {
+        } else if (!strcmp(argv[i], "--radio") && i + 1 < argc) {
             cli_radio = argv[++i];
-        } else if (strcmp(argv[i], "-a") == 0 && i + 1 < argc) {
+        } else if (!strcmp(argv[i], "-a") && i + 1 < argc) {
             cli_at = argv[++i];
-        } else if (strcmp(argv[i], "-x") == 0 && i + 1 < argc) {
+        } else if (!strcmp(argv[i], "-x") && i + 1 < argc) {
             cli_hex = argv[++i];
-        } else if (strcmp(argv[i], "-d") == 0 && i + 1 < argc) {
+        } else if (!strcmp(argv[i], "-d") && i + 1 < argc) {
             cli_dev = argv[++i];
-        } else if (strcmp(argv[i], "-p") == 0 && i + 1 < argc) {
+        } else if (!strcmp(argv[i], "-p") && i + 1 < argc) {
             esc_port = atoi(argv[++i]);
         }
     }
@@ -979,86 +1086,49 @@ int main(int argc, char *argv[]) {
         init_best_channel((cli_at || cli_telemetry || cli_seed || cli_radio) ? 1 : 0);
     }
 
-    if (cli_scan) {
-        scan_devices();
-        if (g_ctx.fd >= 0) close(g_ctx.fd);
-        return 0;
-    }
-
-    if (cli_locks) {
-        query_sim_locks(1);
-        if (g_ctx.fd >= 0) close(g_ctx.fd);
-        return 0;
-    }
-
-    if (cli_telemetry) {
-        print_full_telemetry(g_verbose);
-        if (g_ctx.fd >= 0) close(g_ctx.fd);
-        return 0;
-    }
-
-    if (cli_seed) {
-        query_akseedno(g_verbose);
-        if (g_ctx.fd >= 0) close(g_ctx.fd);
-        return 0;
-    }
-
-    if (cli_boost) {
-        int res = execute_boost_unlock(g_verbose);
-        if (g_ctx.fd >= 0) close(g_ctx.fd);
-        return res;
-    }
-
-    if (cli_relock) {
-        int res = execute_carrier_relock(cli_relock, g_verbose);
-        if (g_ctx.fd >= 0) close(g_ctx.fd);
-        return res;
-    }
-
-    if (cli_radio) {
-        int res = execute_radio_action(cli_radio, g_verbose);
-        if (g_ctx.fd >= 0) close(g_ctx.fd);
-        return res;
-    }
+    if (cli_scan)     { scan_devices();          goto done; }
+    if (cli_locks)    { query_sim_locks(1);       goto done; }
+    if (cli_telemetry){ print_full_telemetry(g_verbose); goto done; }
+    if (cli_seed)     { query_akseedno(g_verbose);goto done; }
+    if (cli_boost)    { int rc = execute_boost_unlock(g_verbose); close(g_ctx.fd); return rc; }
+    if (cli_relock)   { int rc = execute_carrier_relock(cli_relock, g_verbose); close(g_ctx.fd); return rc; }
+    if (cli_radio)    { int rc = execute_radio_action(cli_radio, g_verbose); close(g_ctx.fd); return rc; }
 
     if (cli_at) {
         char at_resp[RESP_BUF_SIZE] = {0};
         int r = send_at_command_sync(cli_at, at_resp, sizeof(at_resp), 2500);
         if (r > 0) printf("%s\n", at_resp);
-        else printf(".ERR_AT_TIMEOUT..\n");
-        if (g_ctx.fd >= 0) close(g_ctx.fd);
-        return (r > 0) ? 0 : 1;
+        else printf(MARK_ERR_AT_TIMEOUT);
+        goto done;
     }
 
     if (cli_hex) {
         uint8_t payload[CMD_BUF_SIZE];
         uint8_t resp[RESP_BUF_SIZE];
-        char resp_hex[RESP_BUF_SIZE * 2 + 1];
         int l = hex2bin(cli_hex, payload, sizeof(payload));
         if (l > 0) {
             int r = dispatch_ipc_frame(payload, l, resp, sizeof(resp));
             if (r > 0) {
+                char resp_hex[RESP_BUF_SIZE * 2 + 1];
                 bin2hex(resp, r, resp_hex);
                 printf("%s\n", resp_hex);
             } else {
-                printf(".ERR_IPC..\n");
+                printf(MARK_ERR_IPC);
             }
-            if (g_ctx.fd >= 0) close(g_ctx.fd);
+            close(g_ctx.fd);
             return (r > 0) ? 0 : 1;
-        } else {
-            printf(".ERR_HEX_SYNTAX..\n");
-            if (g_ctx.fd >= 0) close(g_ctx.fd);
-            return 1;
         }
+        printf(MARK_ERR_HEX_SYNTAX);
+        goto done;
     }
 
     if (cli_csc) {
-        int res = execute_samsung_csc_change(cli_csc, g_verbose);
-        if (g_ctx.fd >= 0) close(g_ctx.fd);
-        return res;
+        int rc = execute_samsung_csc_change(cli_csc, g_verbose);
+        close(g_ctx.fd);
+        return rc;
     }
 
-    /* الوضع التفاعلي الكامل المتوافق 100% مع واجهة C# Desktop */
+    /* ============ interactive session (C# desktop contract) ============ */
     print_compact_info();
 
     char line[CMD_BUF_SIZE * 2 + 64];
@@ -1066,121 +1136,101 @@ int main(int argc, char *argv[]) {
     uint8_t resp[RESP_BUF_SIZE];
     char resp_hex[RESP_BUF_SIZE * 2 + 1];
 
-    printf("<< ");
+    printf(PROMPT);
     fflush(stdout);
 
     while (g_running && fgets(line, sizeof(line), stdin) != NULL) {
         line[strcspn(line, "\r\n")] = '\0';
-        if (!line[0]) { printf("<< "); fflush(stdout); continue; }
+        if (!line[0]) { printf(PROMPT); fflush(stdout); continue; }
 
-        if (strcasecmp(line, "EXIT") == 0 || strcasecmp(line, "QUIT") == 0) break;
+        if (strcasecmp(line, PROTO_CMD_EXIT) == 0 || strcasecmp(line, PROTO_CMD_QUIT) == 0)
+            break;
 
-        if (strcasecmp(line, "HELP") == 0) {
-            print_help(argv[0]);
-            printf("<< "); fflush(stdout); continue;
+        if (strcasecmp(line, PROTO_CMD_HELP) == 0) {
+            print_help(argv[0]); printf(PROMPT); fflush(stdout); continue;
         }
-
-        if (strcasecmp(line, "SCAN") == 0) {
-            scan_devices();
-            printf("<< "); fflush(stdout); continue;
+        if (strcasecmp(line, PROTO_CMD_SCAN) == 0) {
+            scan_devices(); printf(PROMPT); fflush(stdout); continue;
         }
-
-        if (strcasecmp(line, "STATUS") == 0) {
-            print_detailed_status();
-            printf("<< "); fflush(stdout); continue;
+        if (strcasecmp(line, PROTO_CMD_STATUS) == 0) {
+            print_detailed_status(); printf(PROMPT); fflush(stdout); continue;
         }
-
-        if (strcasecmp(line, "LOCKS") == 0 || strcasecmp(line, "SIMLOCK") == 0) {
-            query_sim_locks(0);
-            printf("<< "); fflush(stdout); continue;
+        if (strcasecmp(line, PROTO_CMD_LOCKS) == 0 || strcasecmp(line, PROTO_CMD_SIMLOCK) == 0) {
+            query_sim_locks(0); printf(PROMPT); fflush(stdout); continue;
         }
-
-        if (strcasecmp(line, "DEVINFO") == 0 || strcasecmp(line, "TELEMETRY") == 0) {
-            print_full_telemetry(0);
-            printf("<< "); fflush(stdout); continue;
+        if (strcasecmp(line, PROTO_CMD_DEVINFO) == 0 || strcasecmp(line, PROTO_CMD_TELEMETRY) == 0) {
+            print_full_telemetry(0); printf(PROMPT); fflush(stdout); continue;
         }
-
-        if (strcasecmp(line, "AKSEED") == 0) {
-            query_akseedno(0);
-            printf("<< "); fflush(stdout); continue;
+        if (strcasecmp(line, PROTO_CMD_AKSEED) == 0) {
+            query_akseedno(0); printf(PROMPT); fflush(stdout); continue;
         }
-
-        if (strcasecmp(line, "BOOST") == 0 ||
-            strcasecmp(line, "/boost") == 0 ||
-            strcasecmp(line, "-boost") == 0 ||
+        if (strcasecmp(line, PROTO_CMD_VERSION) == 0) {
+            print_version(); printf(PROMPT); fflush(stdout); continue;
+        }
+        if (strcasecmp(line, PROTO_CMD_PROPS) == 0) {
+            print_props(); printf(PROMPT); fflush(stdout); continue;
+        }
+        if (strcasecmp(line, PROTO_CMD_BOOST_UNLOCK) == 0 ||
+            strcasecmp(line, "/boost") == 0 || strcasecmp(line, "-boost") == 0 ||
             strcasecmp(line, "--boost") == 0 ||
             strcasecmp(line, "BOOST_UNLOCK") == 0 ||
             strcasecmp(line, "SPR_UNLOCK") == 0 ||
-            strncasecmp(line, "BOOST:", 6) == 0 ||
+            strncasecmp(line, PROTO_PREFIX_BOOST, 6) == 0 ||
             strncasecmp(line, "/BOOST:", 7) == 0) {
-            execute_boost_unlock(0);
-            printf("<< "); fflush(stdout); continue;
+            execute_boost_unlock(0); printf(PROMPT); fflush(stdout); continue;
         }
-
-        if (strncasecmp(line, "RELOCK:", 7) == 0) {
-            execute_carrier_relock(line + 7, 0);
-            printf("<< "); fflush(stdout); continue;
+        if (strncasecmp(line, PROTO_PREFIX_RELOCK, 7) == 0) {
+            execute_carrier_relock(line + 7, 0); printf(PROMPT); fflush(stdout); continue;
         }
-
-        if (strncasecmp(line, "RADIO:", 6) == 0) {
-            execute_radio_action(line + 6, 0);
-            printf("<< "); fflush(stdout); continue;
+        if (strncasecmp(line, PROTO_PREFIX_RADIO, 6) == 0) {
+            execute_radio_action(line + 6, 0); printf(PROMPT); fflush(stdout); continue;
         }
-
-        if (strcasecmp(line, "RECONNECT") == 0) {
+        if (strcasecmp(line, PROTO_CMD_RECONNECT) == 0) {
             init_best_channel(0);
-            printf(".CH=%s..\n<< ", g_ctx.active_path);
-            fflush(stdout);
-            continue;
+            printf(MARK_CH_FMT, g_ctx.active_path);
+            printf(PROMPT); fflush(stdout); continue;
         }
-
-        if (strcasecmp(line, "INFO") == 0) {
-            print_compact_info();
-            printf("<< "); fflush(stdout); continue;
+        if (strcasecmp(line, PROTO_CMD_INFO) == 0) {
+            print_compact_info(); printf(PROMPT); fflush(stdout); continue;
         }
-
-        if (strncasecmp(line, "AUTH:", 5) == 0) {
+        if (strncasecmp(line, PROTO_PREFIX_AUTH, 5) == 0) {
             g_session_seed = (uint32_t)strtoul(line + 5, NULL, 16);
-            printf(".OK_AUTH..\n<< ");
-            fflush(stdout);
-            continue;
+            printf(MARK_OK_AUTH);
+            printf(PROMPT); fflush(stdout); continue;
         }
-
-        if (strncasecmp(line, "CSC:", 4) == 0) {
+        if (strncasecmp(line, PROTO_PREFIX_CSC, 4) == 0) {
             execute_samsung_csc_change(line + 4, 0);
-            printf("<< "); fflush(stdout); continue;
+            printf(PROMPT); fflush(stdout); continue;
         }
-
         if (strncasecmp(line, "MODE:AT", 7) == 0) {
             init_best_channel(1);
-            printf(".CH=%s..\n<< ", g_ctx.active_path);
-            fflush(stdout);
-            continue;
+            printf(MARK_CH_FMT, g_ctx.active_path);
+            printf(PROMPT); fflush(stdout); continue;
         }
-
         if (strncasecmp(line, "MODE:IPC", 8) == 0) {
             init_best_channel(0);
-            printf(".CH=%s..\n<< ", g_ctx.active_path);
-            fflush(stdout);
-            continue;
+            printf(MARK_CH_FMT, g_ctx.active_path);
+            printf(PROMPT); fflush(stdout); continue;
         }
-
         if (strncasecmp(line, "AT:", 3) == 0 ||
             strncasecmp(line, "AT", 2) == 0 ||
             line[0] == '+' || line[0] == '$' ||
-            strncasecmp(line, "GETSPR", 6) == 0 ||
-            strncasecmp(line, "SETSPR", 6) == 0 ||
-            strncasecmp(line, "SRELOCK1", 8) == 0) {
+            strncasecmp(line, RIL_CMD_GETSPR, 6) == 0 ||
+            strncasecmp(line, RIL_CMD_SETSPR, 6) == 0 ||
+            strncasecmp(line, RIL_CMD_SRELOCK, 7) == 0) {
+            /* raw AT passthrough (AT: prefix optional).
+             * SRELOCK matched on 7-char prefix like the original dispatcher. */
             const char *at_cmd = (strncasecmp(line, "AT:", 3) == 0) ? line + 3 : line;
             char at_out[RESP_BUF_SIZE] = {0};
             int r = send_at_command_sync(at_cmd, at_out, sizeof(at_out), 2500);
             if (r > 0) printf("%s\n", at_out);
-            else printf(".TIMEOUT..\n");
-            printf("<< "); fflush(stdout); continue;
+            else printf(MARK_TIMEOUT);
+            printf(PROMPT); fflush(stdout); continue;
         }
 
+        /* fallback: hex IPC frame (optionally HEX:-prefixed) */
         const char *hex_ptr = line;
-        if (strncasecmp(line, "HEX:", 4) == 0) hex_ptr = line + 4;
+        if (strncasecmp(line, PROTO_PREFIX_HEX, 4) == 0) hex_ptr = line + 4;
 
         int bin_len = hex2bin(hex_ptr, payload, sizeof(payload));
         if (bin_len > 0) {
@@ -1192,20 +1242,21 @@ int main(int argc, char *argv[]) {
             if (r > 0) {
                 transform_buffer(resp, r, g_session_seed);
                 bin2hex(resp, r, resp_hex);
-                printf(".OK..%s#\n", resp_hex);
+                printf(MARK_OK_HEX_FMT, resp_hex);
             } else if (r == 0) {
-                printf(".OK..#\n");
+                printf(MARK_OK_EMPTY);
             } else {
-                printf(".ERR_IPC..\n");
+                printf(MARK_ERR_IPC);
             }
         } else {
-            printf(".ERR_SYNTAX..\n");
+            printf(MARK_ERR_SYNTAX);
         }
 
-        printf("<< ");
+        printf(PROMPT);
         fflush(stdout);
     }
 
+done:
     if (g_ctx.fd >= 0) close(g_ctx.fd);
     return 0;
 }

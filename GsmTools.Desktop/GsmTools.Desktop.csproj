@@ -15,7 +15,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\AT" Link="AT">
+    <None Include="..\2\AT" Link="AT" Condition="Exists('..\2\AT')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AT" Link="AT" Condition="!Exists('..\2\AT') and Exists('..\AT')">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

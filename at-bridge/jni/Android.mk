@@ -1,5 +1,6 @@
-# Android.mk - GsmTools AT Bridge
-# ndk-build NDK_PROJECT_PATH=.. APP_BUILD_SCRIPT=jni/Android.mk
+# Android.mk - GsmTools AT Bridge (v4.0)
+# ndk-build usage:
+#   ndk-build NDK_PROJECT_PATH=.. APP_BUILD_SCRIPT=jni/Android.mk NDK_APPLICATION_MK=jni/Application.mk
 
 LOCAL_PATH := $(call my-dir)
 
@@ -8,13 +9,12 @@ include $(CLEAR_VARS)
 LOCAL_MODULE     := AT
 LOCAL_SRC_FILES  := at_bridge.c
 
-# Static linking - لا يعتمد على أي مكتبة على الجهاز
+# Fully static - no runtime library dependencies on the device
 LOCAL_LDFLAGS    := -static
-
-# تحسينات الحجم والأداء
 LOCAL_CFLAGS     := -O2 -Wall -Wextra -DNDEBUG
+LOCAL_LDLIBS     := -ldl
 
-# لا نحتاج STL
+# no STL needed
 LOCAL_STL        := none
 
 include $(BUILD_EXECUTABLE)

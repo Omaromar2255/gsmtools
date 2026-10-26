@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("GsmTools.Desktop")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+571f823cfa018ab5ad19baff352ca6b0c5cb55d3")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6a3217345024d3c2d429d649a259d99623171b24")]
 [assembly: System.Reflection.AssemblyProductAttribute("GsmTools.Desktop")]
 [assembly: System.Reflection.AssemblyTitleAttribute("GsmTools.Desktop")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

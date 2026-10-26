@@ -1,119 +1,58 @@
-# GsmTools AT Bridge
+# GsmTools AT Bridge (v4.0)
 
-> Samsung AT RIL Command Bridge for modern Samsung Galaxy devices
+On-device bridge binary pushed to `/data/local/tmp/AT` by the desktop workflows.
+Single C source (`jni/at_bridge.c`) + comprehensive command dictionary
+(`jni/all_gsm_commands.h`). Builds fully static — no runtime dependencies.
 
-## 📋 ما هو؟
+## Channels (priority order)
 
-ملف تنفيذي (binary) يعمل على أجهزة سامسونج ويسمح بتمرير أوامر AT إلى المودم عبر ADB Shell. بديل مستقل لا يعتمد على أي أداة خارجية.
+| # | Channel | Path / mechanism |
+|---|---------|-------------------|
+| 1 | `CH_SECRIL_LIB` | `dlopen("libsecril-client.so")` → `send_recv_cmd` (strongest) |
+| 2 | `CH_DEV_IPC_RAW` | `/dev/umts_ipc0` → `umts_ipc1` → `umts_rfs0` → `/dev/diag` |
+| 3 | `CH_RILD_PARCEL` | `/dev/socket/rild{,-oem,-debug,2}` + OEM-hook parcel (req 59) |
+| 4 | `CH_DEV_AT_TTY` | `/dev/umts_atc0` → `atc1` → `at0` → `at_distributor[0]` → `smd11` → `smd0` → `smd7` → `ttyGS0` → `ttyACM0` → `ttyUSB0` |
+| 5 | `CH_TCP_RELAY_2600` | TCP `127.0.0.1:2600` (UID-1000 companion relay) |
 
-## 🏗️ بنية المشروع
+## Build
 
-```
-at-bridge/
-├── jni/
-│   ├── at_bridge.c        # الكود المصدري الرئيسي (C)
-│   ├── Android.mk         # ملف بناء NDK
-│   └── Application.mk     # إعدادات NDK
-├── build.sh               # سكربت بناء (Linux/macOS/Server)
-├── build.bat              # سكربت بناء (Windows)
-└── README.md              # هذا الملف
-```
-
-## 🔧 متطلبات البناء
-
-- **Android NDK** r21 أو أحدث
-- تحميل: https://developer.android.com/ndk/downloads
-
-## 🚀 البناء
-
-### على Windows:
-```batch
-set ANDROID_NDK_HOME=C:\path\to\ndk
-build.bat
-```
-
-### على Linux/macOS/Server:
 ```bash
-export ANDROID_NDK_HOME=/path/to/ndk
-chmod +x build.sh
-./build.sh
+./build.sh            # all ABIs (arm64-v8a, armeabi-v7a) + host-linux test build
+./build.sh host       # host test build only (gcc)
+./build.sh deploy     # build + adb push to /data/local/tmp/AT
 ```
 
-### النتيجة:
+Outputs land in `payloads/bin/<abi>/` with primary copies at `payloads/AT`
+(arm64) and `payloads/AT_32` (arm). Windows: `build.bat`.
+
+## Session protocol (consumed by GsmTools.Desktop + python tools)
+
 ```
-at-bridge/libs/arm64-v8a/AT    # الملف الثنائي الجاهز
-```
-
-## 📱 الاستخدام
-
-### 1. رفع الملف إلى الجهاز
-```bash
-adb push libs/arm64-v8a/AT /data/local/tmp/AT
-adb shell chmod 755 /data/local/tmp/AT
-```
-
-### 2. التشغيل
-```bash
-# الوضع التفاعلي
-adb shell /data/local/tmp/AT
-
-# تغيير CSC مباشرة
-adb shell /data/local/tmp/AT -c XAA
-
-# إرسال أمر hex مباشر
-adb shell /data/local/tmp/AT -x 060100090000584141
-
-# إرسال أمر AT
-adb shell /data/local/tmp/AT -a "AT+CLCK=?"
-
-# فحص الأجهزة المتاحة
-adb shell /data/local/tmp/AT -s
+INFO|MODEL=SM-S928U|CSC=XAU|AND=14|PATCH=2025-08-01|DBG=0x494C|UID=2000|CH=/dev/umts_atc0
+<< BOOST
+.OK_BOOST..
+<< CSC:XAA
+.OK_CSC..
+<< 0601000E0000584141000058414 1     (raw hex IPC, optionally AUTH:-encrypted)
+.OK..<RESP_HEX>#
 ```
 
-### 3. الأوامر التفاعلية
-```
-#> HELP              عرض المساعدة
-#> STATUS            معلومات الجهاز
-#> SCAN              فحص أجهزة المودم المتاحة
-#> AT+CLCK=?         أمر AT خام
-#> HEX:0601...       أمر IPC بصيغة hex
-#> IPC:5841410000    بناء حزمة IPC تلقائياً
-#> CSC:XAA           تغيير CSC
-#> CLEANUP           تنظيف التطبيقات
-#> VERBOSE           تفعيل/إيقاف التشخيص
-#> RECONNECT         إعادة الاتصال بالمودم
-#> EXIT              خروج
-```
+Machine markers (never change without updating the C# client):
+`.OK..%s#` `.OK..#` `.OK_CSC..` `.OK_AUTH..` `.OK_BOOST..` `.OK_RELOCK..`
+`.OK_RADIO..` `.ERR_IPC..` `.ERR_SYNTAX..` `.ERR_HEX_SYNTAX..`
+`.ERR_CSC_INVALID..` `.ERR_RELOCK_INVALID..` `.ERR_UNKNOWN_ACTION..`
+`.ERR_AT_TIMEOUT..` `.TIMEOUT..` `.CH=%s..` plus pipe-lines
+`SIMLOCK|...`, `DEVINFO|...`, `AKSEED|...`, `PROPS|...`, `VERSION|...`.
 
-## 🔌 قنوات الاتصال بالمودم
+## Session cipher
 
-البرنامج يحاول فتح المودم بالترتيب التالي:
+`AUTH:<SEED_HEX>` enables Xorshift32 [13,17,5] over HEX IPC payloads and their
+responses (symmetric — same transform encrypts/decrypts; state resets per
+buffer). AT text commands stay readable by design.
 
-| الأولوية | القناة | الوصف |
-|---|---|---|
-| 1 | `/dev/umts_atc0` | Samsung AT Channel (مباشر) |
-| 2 | `/dev/smd11` | Qualcomm SMD (Snapdragon) |
-| 3 | `/dev/at_distributor` | Samsung AT Distributor |
-| 4 | `/dev/socket/rild` | RIL Socket |
-| 5 | TCP localhost:2600 | Companion App Proxy |
+## Host testing
 
-## 🔑 أكواد CSC الشائعة
-
-| الكود | الشبكة |
-|---|---|
-| `XAA` | AT&T Open/Unlocked |
-| `XAG` | T-Mobile Open |
-| `XAS` | Sprint Open |
-| `XAB` | Verizon Open |
-| `ATT` | AT&T Branded |
-| `TMB` | T-Mobile Branded |
-| `SPR` | Sprint Branded |
-| `VZW` | Verizon Branded |
-
-## ⚡ بناء ورفع سريع
-```bash
-# أمر واحد: بناء + رفع + تشغيل
-./build.sh deploy-run
-# أو على ويندوز
-build.bat deploy-run
-```
+The same source compiles on desktop Linux (`./build.sh host`) with a small
+compat shim (`jni/gt_host_compat.h`): system properties are read from the
+file named by `$GT_PROPS_FILE`. This is what the mock-ADB end-to-end tests
+(`tests/`) use to validate the full session protocol without a phone.

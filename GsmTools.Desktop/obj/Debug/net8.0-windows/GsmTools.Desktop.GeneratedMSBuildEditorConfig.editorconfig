@@ -8,6 +8,6 @@ build_property.PlatformNeutralAssembly =
 build_property.EnforceExtendedAnalyzerRules = 
 build_property._SupportedPlatformList = Linux,macOS,Windows
 build_property.RootNamespace = GsmTools.Desktop
-build_property.ProjectDir = c:\Users\pc5\Documents\GitHub\gsmtools\GsmTools.Desktop\
+build_property.ProjectDir = C:\Users\pc5\Documents\GitHub\gsmtools\GsmTools.Desktop\
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 
